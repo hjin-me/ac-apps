@@ -19,6 +19,7 @@
 | [06-csp-extensions.md](06-csp-extensions.md) | Custom Shaders Patch 的 `ac.ext_*` 扩展函数 |
 | [07-aclib-framework.md](07-aclib-framework.md) | ACLIB 高层框架（`ACApp`/`ACData`/`ACMeta`） |
 | [08-development-tooling.md](08-development-tooling.md) | 调试、热重载、类型桩、Content Manager、OBS 集成 |
+| [09-testing.md](09-testing.md) | 测试规范：离线纯逻辑（stub `ac`/`acsys`）与游戏内 API 行为的分层测试 |
 
 ## 相关概念速览
 
