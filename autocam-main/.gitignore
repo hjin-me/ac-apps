@@ -1,0 +1,16 @@
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Workspace/temporary files
+backup/
+.idea/
+.vscode/
+.gemini/
+*.log
+py_log.txt
