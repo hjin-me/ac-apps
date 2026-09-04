@@ -186,6 +186,13 @@ pitCameraDelay =     {"Delay1":5,"Delay2":5,"Delay3":5,"Delay4":5} #{"Delay1":5,
 firstLapSwitching = {"Guess1":3}
 firstLapDelay =     {"Delay1":15}
 
+# Raw schedule strings as loaded, so a Save writes back what the user actually configured
+# instead of clobbering their tuning with the hardcoded preset below.
+rawCameraSwitching = '3^80^18|0^10^10|1^5^8|4^2^5|7^1^5'
+rawFirstLapSwitching = '3^1^10'
+rawPitCameraSwitching = '1^1^5|0^1^5|4^1^5'
+rawBattleCams = '3^2^10|0^1^10|1^1^10'
+
 battleCamSwitching = {"Guess1":3,"Guess2":0,"Guess3":2,"Guess4":1} #{"Guess1":0,"Guess2":1,"Guess3":2,"Guess4":4}
 battleCamDelay =     {"Delay1":10,"Delay2":10,"Delay3":5,"Delay4":10} #{"Delay1":5,"Delay2":5,"Delay3":5,"Delay4":5}
 
@@ -210,6 +217,27 @@ battleKMHPercentDiff = 15.0
 leadersOverClosest = 0
 offPaceCanOverrideBattles = 1
 noDrivableCamWithVirtualMirror = 1
+
+positionDecay = 0.92
+incidentDetection = 1
+incidentMinNormalSpeed = 60.0
+incidentMaxSpeed = 25.0
+incidentDuration = 8.0
+forceTrackCamOnCloseBattles = 1
+closeBattleThreshold = 0.35
+bestBattleGap = 999.0
+
+chkIncident = 0
+chkForceTV = 0
+prevCarPositions = {}
+
+dynamicChaseCam = 1
+chaseOnboardThreshold = 0.8
+tvCamThreshold = 0.3
+
+chkDynamicChase = 0
+chkPreferLeader = 0
+chkVerbose = 0
 
 #defaultPitCam = 0
 #defaultOffPaceCam = 3
@@ -275,9 +303,143 @@ oldorder = ''
 
 ##############################################################################
 
+def WriteSettings():
+    global windowx, windowy, scale_mult, skipDrivers, promoText
+    global AutoCamActive, driverSwitchDelay, defaultCamera, cameraSwitchDelay
+    global verbose, cameraSwitchingEnabled, driverSwitchingEnabled
+    global pitCameraDelay, pitCameraSwitching, preferredDrivers, battleCamSwitching, battleCamDelay
+    global firstLapSwitching, firstLapDelay, countdownCam
+    global minPitKMH, maxPitKMH, offPaceSwitchDelay, minSwitchDelay
+    global battleGap, leadersOverClosest, offPaceCanOverrideBattles, noDrivableCamWithVirtualMirror
+    global positionDecay, incidentDetection, incidentMinNormalSpeed, incidentMaxSpeed, incidentDuration, forceTrackCamOnCloseBattles, closeBattleThreshold
+    global dynamicChaseCam, chaseOnboardThreshold, tvCamThreshold
+    global rawCameraSwitching, rawPitCameraSwitching, rawBattleCams, rawFirstLapSwitching
+
+    try:
+        section = 'SETTINGS'
+        SettingsConfig = configparser.ConfigParser()
+        SettingsConfig.add_section(section)
+        SettingsConfig.set(section, 'AutoCamActive', str(AutoCamActive))
+        SettingsConfig.set(section, 'defaultCamera', str(defaultCamera))
+        SettingsConfig.set(section, 'verbose', str(verbose))
+        SettingsConfig.set(section, 'cameraSwitching', rawCameraSwitching)
+        SettingsConfig.set(section, 'firstLapSwitching', rawFirstLapSwitching)
+        SettingsConfig.set(section, 'pitCameraSwitching', rawPitCameraSwitching)
+        SettingsConfig.set(section, 'battleCams', rawBattleCams)
+        SettingsConfig.set(section, 'countdownCam', str(countdownCam))
+        SettingsConfig.set(section, 'cameraSwitchDelay', str(cameraSwitchDelay))
+        SettingsConfig.set(section, 'cameraSwitchingEnabled', str(cameraSwitchingEnabled))
+        SettingsConfig.set(section, 'driverSwitchingEnabled', str(driverSwitchingEnabled))
+        SettingsConfig.set(section, 'driverSwitchDelay', str(driverSwitchDelay))
+        SettingsConfig.set(section, 'minPitKMH', str(minPitKMH))
+        SettingsConfig.set(section, 'maxPitKMH', str(maxPitKMH))
+        SettingsConfig.set(section, 'offPaceSwitchDelay', str(offPaceSwitchDelay))
+        SettingsConfig.set(section, 'offPaceCanOverrideBattles', str(offPaceCanOverrideBattles))
+        SettingsConfig.set(section, 'minSwitchDelay', str(minSwitchDelay))
+        SettingsConfig.set(section, 'battleGap', str(battleGap))
+        SettingsConfig.set(section, 'leadersOverClosest', str(leadersOverClosest))
+        SettingsConfig.set(section, 'noDrivableCamWithVirtualMirror', str(noDrivableCamWithVirtualMirror))
+        SettingsConfig.set(section, 'positionDecay', str(positionDecay))
+        SettingsConfig.set(section, 'incidentDetection', str(incidentDetection))
+        SettingsConfig.set(section, 'incidentMinNormalSpeed', str(incidentMinNormalSpeed))
+        SettingsConfig.set(section, 'incidentMaxSpeed', str(incidentMaxSpeed))
+        SettingsConfig.set(section, 'incidentDuration', str(incidentDuration))
+        SettingsConfig.set(section, 'forceTrackCamOnCloseBattles', str(forceTrackCamOnCloseBattles))
+        SettingsConfig.set(section, 'closeBattleThreshold', str(closeBattleThreshold))
+        SettingsConfig.set(section, 'dynamicChaseCam', str(dynamicChaseCam))
+        SettingsConfig.set(section, 'chaseOnboardThreshold', str(chaseOnboardThreshold))
+        SettingsConfig.set(section, 'tvCamThreshold', str(tvCamThreshold))
+        SettingsConfig.set(section, 'HideIcon', str(HideIcon))
+        SettingsConfig.set(section, 'AppWidth', str(windowx))
+        SettingsConfig.set(section, 'AppHeight', str(windowy))
+        SettingsConfig.set(section, 'backgroundOpacity', str(backgroundOpacity))
+        SettingsConfig.set(section, 'drawBorder', str(drawBorderVar))
+        SettingsConfig.set(section, 'skipDrivers', "|".join(skipDrivers))
+        
+        with open(SettingsINI, 'w') as configfile:
+            SettingsConfig.write(configfile)
+        ConsoleLog("Saved settings to %s" % SettingsINI)
+    except Exception as e:
+        ConsoleLog("Error in WriteSettings: %s" % e)
+
+def onBattleGapChange(value):
+    global battleGap
+    battleGap = value
+    ConsoleLog("UI Changed battleGap to %0.2f" % battleGap)
+
+def onPosDecayChange(value):
+    global positionDecay
+    positionDecay = value
+    ConsoleLog("UI Changed positionDecay to %0.3f" % positionDecay)
+
+def onSwitchDelayChange(value):
+    global driverSwitchDelay
+    driverSwitchDelay = int(value)
+    ConsoleLog("UI Changed driverSwitchDelay to %d" % driverSwitchDelay)
+
+def onIncidentToggle(*args):
+    global incidentDetection, chkIncident
+    try:
+        incidentDetection = int(ac.isChecked(chkIncident))
+        ConsoleLog("UI Changed incidentDetection to %d" % incidentDetection)
+    except Exception as e:
+        ConsoleLog("Error in onIncidentToggle: %s" % e)
+
+def onForceTVToggle(*args):
+    global forceTrackCamOnCloseBattles, chkForceTV
+    try:
+        forceTrackCamOnCloseBattles = int(ac.isChecked(chkForceTV))
+        ConsoleLog("UI Changed forceTrackCamOnCloseBattles to %d" % forceTrackCamOnCloseBattles)
+    except Exception as e:
+        ConsoleLog("Error in onForceTVToggle: %s" % e)
+
+def onIncidentDurationChange(value):
+    global incidentDuration
+    incidentDuration = value
+    ConsoleLog("UI Changed incidentDuration to %0.1f" % incidentDuration)
+
+def onSaveSettingsClick(*args):
+    WriteSettings()
+
+def onDynamicChaseToggle(*args):
+    global dynamicChaseCam, chkDynamicChase
+    try:
+        dynamicChaseCam = int(ac.isChecked(chkDynamicChase))
+        ConsoleLog("UI Changed dynamicChaseCam to %d" % dynamicChaseCam)
+    except Exception as e:
+        ConsoleLog("Error in onDynamicChaseToggle: %s" % e)
+
+def onTVCamThresholdChange(value):
+    global tvCamThreshold
+    tvCamThreshold = value
+    ConsoleLog("UI Changed tvCamThreshold to %0.2f" % tvCamThreshold)
+
+def onChaseOnboardThresholdChange(value):
+    global chaseOnboardThreshold
+    chaseOnboardThreshold = value
+    ConsoleLog("UI Changed chaseOnboardThreshold to %0.2f" % chaseOnboardThreshold)
+
+def onPreferLeaderToggle(*args):
+    global leadersOverClosest, chkPreferLeader
+    try:
+        leadersOverClosest = int(ac.isChecked(chkPreferLeader))
+        ConsoleLog("UI Changed leadersOverClosest to %d" % leadersOverClosest)
+    except Exception as e:
+        ConsoleLog("Error in onPreferLeaderToggle: %s" % e)
+
+def onVerboseToggle(*args):
+    global verbose, chkVerbose
+    try:
+        verbose = 4 if ac.isChecked(chkVerbose) else 1
+        ConsoleLog("UI Changed verbose to %d" % verbose)
+    except Exception as e:
+        ConsoleLog("Error in onVerboseToggle: %s" % e)
+
 def acMain(ac_version):
     global camWindow, btnToggle, lblInfo, cmExtensions, serverName, serverIP
     global strTimestamp, noDrivableCamWithVirtualMirror
+    global chkIncident, chkForceTV, windowx, windowy
+    global chkDynamicChase, chkPreferLeader, chkVerbose
 
     try:    
         strTimestamp = "%0.4f"%(time.clock())
@@ -328,36 +490,160 @@ def acMain(ac_version):
         #ConsoleLog("acsys.CM.Random = %d"%(acsys.CM.Random))
         #ConsoleLog("acsys.CM.ImageGeneratorCamera = %d"%(acsys.CM.ImageGeneratorCamera))
         #ConsoleLog("acsys.CM.Start = %d"%(acsys.CM.Start))
-    
-        #camWindow = ac.newApp("AutoCamera")
-        #tmpInt = ac.newApp("TESTING WINDOW2")
-        #ac.setSize(tmpInt, 200, 100)
-        #ConsoleLog("App ID = %d"%(tmpInt))
-        #tmpInt = ac.newApp("Auto Cam TESTING")
-        #ac.setSize(tmpInt, 200, 100)
-        #ConsoleLog("App ID = %d"%(tmpInt))
+
         camWindow = ac.newApp("Auto Cam")
         ac.setSize(camWindow, windowx, windowy)
         ConsoleLog("App ID = %d"%(camWindow))
         if HideIcon == 1:
             ac.setIconPosition(camWindow, 0, -9000)
 
-        #ac.setSize(camWindow,200, 100)
-        #ConsoleLog("camWindow = %d"%(camWindow))
         ac.drawBorder(camWindow,0)
-        ac.setBackgroundOpacity(camWindow,0.5)
-        #ac.setTitle(camWindow, windowTitle)
-        
-        #do we need to know when it's visible?
-        #ac.addRenderCallback(camWindow , onFormRender)
+        ac.setBackgroundOpacity(camWindow,0.7)
 
-        btnToggle = ac.addButton(camWindow, "On")
+        btnToggle = ac.addButton(camWindow, "AutoCam ACTIVE")
         if AutoCamActive == 0:
-            ac.setText(btnToggle, "Off")
-        ac.setPosition(btnToggle, 5, 25)
-        ac.setSize(btnToggle, windowx - 10, 25)
-        ac.setFontSize(btnToggle, 16)
+            ac.setText(btnToggle, "AutoCam INACTIVE")
+        ac.setPosition(btnToggle, 15, 25)
+        ac.setSize(btnToggle, windowx - 30, 25)
+        ac.setFontSize(btnToggle, 14)
         ac.addOnClickedListener(btnToggle, onToggle)
+
+        # --- Section 1: Battle Settings ---
+        lblSectionBattle = ac.addLabel(camWindow, "--- Battle Settings ---")
+        ac.setPosition(lblSectionBattle, 15, 60)
+        ac.setFontSize(lblSectionBattle, 13)
+
+        # Spinner for battleGap
+        lblBattleGap = ac.addLabel(camWindow, "Battle Gap (sec):")
+        ac.setPosition(lblBattleGap, 15, 85)
+        ac.setFontSize(lblBattleGap, 12)
+        
+        spinBattleGap = ac.addSpinner(camWindow, "")
+        ac.setPosition(spinBattleGap, 160, 83)
+        ac.setSize(spinBattleGap, 105, 22)
+        ac.setRange(spinBattleGap, 0.1, 2.5)
+        ac.setStep(spinBattleGap, 0.1)
+        ac.setValue(spinBattleGap, battleGap)
+        ac.addOnValueChangeListener(spinBattleGap, onBattleGapChange)
+
+        # Spinner for positionDecay
+        lblPosDecay = ac.addLabel(camWindow, "Front Priority (Decay):")
+        ac.setPosition(lblPosDecay, 15, 115)
+        ac.setFontSize(lblPosDecay, 12)
+        
+        spinPosDecay = ac.addSpinner(camWindow, "")
+        ac.setPosition(spinPosDecay, 160, 113)
+        ac.setSize(spinPosDecay, 105, 22)
+        ac.setRange(spinPosDecay, 0.70, 1.0)
+        ac.setStep(spinPosDecay, 0.01)
+        ac.setValue(spinPosDecay, positionDecay)
+        ac.addOnValueChangeListener(spinPosDecay, onPosDecayChange)
+
+        # Spinner for driverSwitchDelay
+        lblSwitchDelay = ac.addLabel(camWindow, "Switch Delay (sec):")
+        ac.setPosition(lblSwitchDelay, 15, 145)
+        ac.setFontSize(lblSwitchDelay, 12)
+        
+        spinSwitchDelay = ac.addSpinner(camWindow, "")
+        ac.setPosition(spinSwitchDelay, 160, 143)
+        ac.setSize(spinSwitchDelay, 105, 22)
+        ac.setRange(spinSwitchDelay, 5.0, 60.0)
+        ac.setStep(spinSwitchDelay, 1.0)
+        ac.setValue(spinSwitchDelay, driverSwitchDelay)
+        ac.addOnValueChangeListener(spinSwitchDelay, onSwitchDelayChange)
+
+        # Checkbox for Prefer Leader Battles
+        chkPreferLeader = ac.addCheckBox(camWindow, "Prefer Leader Battles")
+        ac.setPosition(chkPreferLeader, 15, 175)
+        ac.setSize(chkPreferLeader, 250, 22)
+        ac.setChecked(chkPreferLeader, leadersOverClosest)
+        ac.addOnClickedListener(chkPreferLeader, onPreferLeaderToggle)
+
+        # --- Section 2: Dynamic Chase Camera ---
+        lblSectionChase = ac.addLabel(camWindow, "--- Dynamic Chase Cam ---")
+        ac.setPosition(lblSectionChase, 15, 205)
+        ac.setFontSize(lblSectionChase, 13)
+
+        # Checkbox for Enable Dynamic Chase Cam
+        chkDynamicChase = ac.addCheckBox(camWindow, "Enable Dynamic Chase Cam")
+        ac.setPosition(chkDynamicChase, 15, 230)
+        ac.setSize(chkDynamicChase, 250, 22)
+        ac.setChecked(chkDynamicChase, dynamicChaseCam)
+        ac.addOnClickedListener(chkDynamicChase, onDynamicChaseToggle)
+
+        # Spinner for tvCamThreshold
+        lblTVThreshold = ac.addLabel(camWindow, "TV Cam Threshold (sec):")
+        ac.setPosition(lblTVThreshold, 15, 260)
+        ac.setFontSize(lblTVThreshold, 12)
+        
+        spinTVThreshold = ac.addSpinner(camWindow, "")
+        ac.setPosition(spinTVThreshold, 160, 258)
+        ac.setSize(spinTVThreshold, 105, 22)
+        ac.setRange(spinTVThreshold, 0.1, 1.0)
+        ac.setStep(spinTVThreshold, 0.05)
+        ac.setValue(spinTVThreshold, tvCamThreshold)
+        ac.addOnValueChangeListener(spinTVThreshold, onTVCamThresholdChange)
+
+        # Spinner for chaseOnboardThreshold
+        lblChaseOnboard = ac.addLabel(camWindow, "Onboard Threshold (sec):")
+        ac.setPosition(lblChaseOnboard, 15, 290)
+        ac.setFontSize(lblChaseOnboard, 12)
+        
+        spinChaseOnboard = ac.addSpinner(camWindow, "")
+        ac.setPosition(spinChaseOnboard, 160, 288)
+        ac.setSize(spinChaseOnboard, 105, 22)
+        ac.setRange(spinChaseOnboard, 0.3, 2.0)
+        ac.setStep(spinChaseOnboard, 0.1)
+        ac.setValue(spinChaseOnboard, chaseOnboardThreshold)
+        ac.addOnValueChangeListener(spinChaseOnboard, onChaseOnboardThresholdChange)
+
+        # Checkbox for Force TV Cam on Battle
+        chkForceTV = ac.addCheckBox(camWindow, "Force TV Cam (Non-Dynamic)")
+        ac.setPosition(chkForceTV, 15, 320)
+        ac.setSize(chkForceTV, 250, 22)
+        chkForceTVVal = 1 if forceTrackCamOnCloseBattles == 1 else 0
+        ac.setChecked(chkForceTV, chkForceTVVal)
+        ac.addOnClickedListener(chkForceTV, onForceTVToggle)
+
+        # --- Section 3: Incident Settings ---
+        lblSectionIncident = ac.addLabel(camWindow, "--- Incident Settings ---")
+        ac.setPosition(lblSectionIncident, 15, 350)
+        ac.setFontSize(lblSectionIncident, 13)
+
+        # Checkbox for Incident Detection
+        chkIncident = ac.addCheckBox(camWindow, "Enable Incident Detection")
+        ac.setPosition(chkIncident, 15, 375)
+        ac.setSize(chkIncident, 250, 22)
+        ac.setChecked(chkIncident, incidentDetection)
+        ac.addOnClickedListener(chkIncident, onIncidentToggle)
+
+        # Spinner for incidentDuration
+        lblIncidentDuration = ac.addLabel(camWindow, "Incident Duration (sec):")
+        ac.setPosition(lblIncidentDuration, 15, 410)
+        ac.setFontSize(lblIncidentDuration, 12)
+        
+        spinIncidentDuration = ac.addSpinner(camWindow, "")
+        ac.setPosition(spinIncidentDuration, 160, 408)
+        ac.setSize(spinIncidentDuration, 105, 22)
+        ac.setRange(spinIncidentDuration, 2.0, 20.0)
+        ac.setStep(spinIncidentDuration, 1.0)
+        ac.setValue(spinIncidentDuration, incidentDuration)
+        ac.addOnValueChangeListener(spinIncidentDuration, onIncidentDurationChange)
+
+        # Checkbox for Verbose Logs
+        chkVerbose = ac.addCheckBox(camWindow, "Enable Verbose Logging")
+        ac.setPosition(chkVerbose, 15, 440)
+        ac.setSize(chkVerbose, 250, 22)
+        chkVerboseVal = 1 if verbose == 4 else 0
+        ac.setChecked(chkVerbose, chkVerboseVal)
+        ac.addOnClickedListener(chkVerbose, onVerboseToggle)
+
+        # Save Settings Button
+        btnSave = ac.addButton(camWindow, "SAVE CONFIGURATION")
+        ac.setPosition(btnSave, 15, 485)
+        ac.setSize(btnSave, windowx - 30, 30)
+        ac.setFontSize(btnSave, 14)
+        ac.addOnClickedListener(btnSave, onSaveSettingsClick)
 
         #checkboxes to enable/disable the app itself as well as the various camera modes?
         
@@ -398,6 +684,7 @@ def acMain(ac_version):
 
 def ReadSettings(INI_File):
     global HideIcon, backgroundOpacity, drawBorderVar
+    global rawCameraSwitching, rawPitCameraSwitching, rawBattleCams, rawFirstLapSwitching
     global windowx, windowy, scale_mult, skipDrivers, promoText
     global AutoCamActive, driverSwitchDelay, defaultCamera, cameraSwitchDelay
     global verbose, cameraSwitchingEnabled, driverSwitchingEnabled
@@ -405,6 +692,8 @@ def ReadSettings(INI_File):
     global firstLapSwitching, firstLapDelay, countdownCam
     global minPitKMH, maxPitKMH, offPaceSwitchDelay, minSwitchDelay
     global battleGap, leadersOverClosest, offPaceCanOverrideBattles, noDrivableCamWithVirtualMirror
+    global positionDecay, incidentDetection, incidentMinNormalSpeed, incidentMaxSpeed, incidentDuration, forceTrackCamOnCloseBattles, closeBattleThreshold
+    global dynamicChaseCam, chaseOnboardThreshold, tvCamThreshold
 
     try:
         if os.path.isfile(INI_File):
@@ -466,7 +755,8 @@ def ReadSettings(INI_File):
             intGuess = 1
             #cameraSwitching
             if SettingsConfig.has_option(section, 'cameraSwitching'):  
-                switchingTemp = SettingsConfig.get(section, 'cameraSwitching').split("|")
+                rawCameraSwitching = SettingsConfig.get(section, 'cameraSwitching')
+                switchingTemp = rawCameraSwitching.split("|")
                 
                 for strCamera in switchingTemp:
                     cam, usage, delay = strCamera.split("^")
@@ -486,7 +776,8 @@ def ReadSettings(INI_File):
             intGuess = 1
             #pitCameraSwitching
             if SettingsConfig.has_option(section, 'pitCameraSwitching'):  
-                switchingTemp = SettingsConfig.get(section, 'pitCameraSwitching').split("|")
+                rawPitCameraSwitching = SettingsConfig.get(section, 'pitCameraSwitching')
+                switchingTemp = rawPitCameraSwitching.split("|")
                 
                 for strCamera in switchingTemp:
                     cam, usage, delay = strCamera.split("^")
@@ -506,7 +797,8 @@ def ReadSettings(INI_File):
             intGuess = 1
             #battleCamSwitching
             if SettingsConfig.has_option(section, 'battleCams'):  
-                switchingTemp = SettingsConfig.get(section, 'battleCams').split("|")
+                rawBattleCams = SettingsConfig.get(section, 'battleCams')
+                switchingTemp = rawBattleCams.split("|")
                 
                 for strCamera in switchingTemp:
                     cam, usage, delay = strCamera.split("^")
@@ -526,7 +818,8 @@ def ReadSettings(INI_File):
             intGuess = 1
             #firstLapSwitching
             if SettingsConfig.has_option(section, 'firstLapSwitching'):  
-                switchingTemp = SettingsConfig.get(section, 'firstLapSwitching').split("|")
+                rawFirstLapSwitching = SettingsConfig.get(section, 'firstLapSwitching')
+                switchingTemp = rawFirstLapSwitching.split("|")
                 
                 for strCamera in switchingTemp:
                     cam, usage, delay = strCamera.split("^")
@@ -651,6 +944,76 @@ def ReadSettings(INI_File):
                 ConsoleLog("noDrivableCamWithVirtualMirror not found")
                 boolWriteSettings = True            
             ConsoleLog("noDrivableCamWithVirtualMirror = %d"%(noDrivableCamWithVirtualMirror))
+
+            #positionDecay
+            if SettingsConfig.has_option(section, 'positionDecay'):  
+                positionDecay = SettingsConfig.getfloat(section, 'positionDecay')
+            else:
+                ConsoleLog("positionDecay not found, using default 0.92")
+            ConsoleLog("positionDecay = %0.3f"%(positionDecay))
+
+            #incidentDetection
+            if SettingsConfig.has_option(section, 'incidentDetection'):  
+                incidentDetection = SettingsConfig.getint(section, 'incidentDetection')
+            else:
+                ConsoleLog("incidentDetection not found, using default 1")
+            ConsoleLog("incidentDetection = %d"%(incidentDetection))
+
+            #incidentMinNormalSpeed
+            if SettingsConfig.has_option(section, 'incidentMinNormalSpeed'):  
+                incidentMinNormalSpeed = SettingsConfig.getfloat(section, 'incidentMinNormalSpeed')
+            else:
+                ConsoleLog("incidentMinNormalSpeed not found, using default 60.0")
+            ConsoleLog("incidentMinNormalSpeed = %0.1f"%(incidentMinNormalSpeed))
+
+            #incidentMaxSpeed
+            if SettingsConfig.has_option(section, 'incidentMaxSpeed'):  
+                incidentMaxSpeed = SettingsConfig.getfloat(section, 'incidentMaxSpeed')
+            else:
+                ConsoleLog("incidentMaxSpeed not found, using default 25.0")
+            ConsoleLog("incidentMaxSpeed = %0.1f"%(incidentMaxSpeed))
+
+            #incidentDuration
+            if SettingsConfig.has_option(section, 'incidentDuration'):  
+                incidentDuration = SettingsConfig.getfloat(section, 'incidentDuration')
+            else:
+                ConsoleLog("incidentDuration not found, using default 8.0")
+            ConsoleLog("incidentDuration = %0.1f"%(incidentDuration))
+
+            #forceTrackCamOnCloseBattles
+            if SettingsConfig.has_option(section, 'forceTrackCamOnCloseBattles'):  
+                forceTrackCamOnCloseBattles = SettingsConfig.getint(section, 'forceTrackCamOnCloseBattles')
+            else:
+                ConsoleLog("forceTrackCamOnCloseBattles not found, using default 1")
+            ConsoleLog("forceTrackCamOnCloseBattles = %d"%(forceTrackCamOnCloseBattles))
+
+            #closeBattleThreshold
+            if SettingsConfig.has_option(section, 'closeBattleThreshold'):  
+                closeBattleThreshold = SettingsConfig.getfloat(section, 'closeBattleThreshold')
+            else:
+                ConsoleLog("closeBattleThreshold not found, using default 0.35")
+            ConsoleLog("closeBattleThreshold = %0.2f"%(closeBattleThreshold))
+
+            #dynamicChaseCam
+            if SettingsConfig.has_option(section, 'dynamicChaseCam'):  
+                dynamicChaseCam = SettingsConfig.getint(section, 'dynamicChaseCam')
+            else:
+                ConsoleLog("dynamicChaseCam not found, using default 1")
+            ConsoleLog("dynamicChaseCam = %d"%(dynamicChaseCam))
+
+            #chaseOnboardThreshold
+            if SettingsConfig.has_option(section, 'chaseOnboardThreshold'):  
+                chaseOnboardThreshold = SettingsConfig.getfloat(section, 'chaseOnboardThreshold')
+            else:
+                ConsoleLog("chaseOnboardThreshold not found, using default 0.8")
+            ConsoleLog("chaseOnboardThreshold = %0.2f"%(chaseOnboardThreshold))
+
+            #tvCamThreshold
+            if SettingsConfig.has_option(section, 'tvCamThreshold'):  
+                tvCamThreshold = SettingsConfig.getfloat(section, 'tvCamThreshold')
+            else:
+                ConsoleLog("tvCamThreshold not found, using default 0.3")
+            ConsoleLog("tvCamThreshold = %0.2f"%(tvCamThreshold))
             
             if SettingsConfig.has_option(section, 'HideIcon'):  
                 HideIcon = SettingsConfig.getint(section, 'HideIcon')    
@@ -985,6 +1348,12 @@ def autoCam():
     global currentId, lastFocusSwitch, defaultSet, cameraSwitchTimer, cameraSwitchDelay
     global setCamera, lastPreferred, countdownFocusSwitch, overrideCar
     global allDriversFinished, allDriversInPits, sessionStartTime, lastSession, sessionStarted
+    global positionDecay, incidentDetection, incidentMinNormalSpeed, incidentMaxSpeed, incidentDuration, forceTrackCamOnCloseBattles, closeBattleThreshold, bestBattleGap, prevCarPositions
+    global dynamicChaseCam, chaseOnboardThreshold, tvCamThreshold
+
+    bestBattleGap = 999.0
+    anyDriverFinishing = 0
+    focusCarBattling = False
 
     #ac.setBackgroundOpacity(camWindow, 0)
     #ac.setIconPosition(camWindow, -7000, -3000)
@@ -1083,6 +1452,7 @@ def autoCam():
             ConsoleLog("lastSession = %d, Session = %d"%(lastSession, sim_info_obj.graphics.session))
             lastSession = sim_info_obj.graphics.session
             sessionStartTime = now
+            prevCarPositions.clear()
             if bIsRace and not promoText == "" and process_exists("obs64.exe"):
                 ConsoleLog("Sending promoText %s"%(promoText))
                 ac.sendChatMessage(promoText)
@@ -1104,6 +1474,97 @@ def autoCam():
             if verbose == 4:
                 ConsoleLog("%s"%strErr)
             
+            # --- INCIDENT / SPIN DETECTION ---
+            if incidentDetection == 1 and bIsRace and anyDriverFinishing == 0 and not ABot_Talking:
+                incident_car = -1
+                normal_speed = 100.0
+                for car in range(0, ac.getCarsCount()):
+                    if ac.isConnected(car) and not ac.isCarInPitlane(car) and ac.getCarState(car, acsys.CS.RaceFinished) == 0:
+                        speed = ac.getCarState(car, acsys.CS.SpeedKMH)
+                        lapCount = ac.getCarState(car, acsys.CS.LapCount)
+                        
+                        if lapCount > 0:
+                            currPoT = ac.getCarState(car, acsys.CS.NormalizedSplinePosition)
+                            keyPoTKMH = "Car%sKMH%0.3f"%(ac.getCarName(car), currPoT)
+                            if keyPoTKMH in dicKMH:
+                                normal_speed = dicKMH[keyPoTKMH]
+                                if normal_speed > incidentMinNormalSpeed and speed < incidentMaxSpeed:
+                                    incident_car = car
+                                    break
+                
+                if incident_car >= 0:
+                    tmpKey = "Car%dIncidentTime"%(incident_car)
+                    if tmpKey not in dic:
+                        dic[tmpKey] = now
+                    
+                    if not ac.getFocusedCar() == incident_car:
+                        ConsoleLog("INCIDENT: Driver %s is slow (Speed: %0.1f km/h, Normal: %0.1f km/h). Focusing!" % (safeName(incident_car), ac.getCarState(incident_car, acsys.CS.SpeedKMH), normal_speed))
+                        ac.focusCar(incident_car)
+                        overrideCar = incident_car
+                        lastFocusSwitch = now
+                        setCamera = 3 # Force TV camera
+                        ac.setCameraMode(3)
+                        cameraSwitchTimer = now
+                        cameraSwitchDelay = incidentDuration
+                        driverSwitched = 1
+                    
+                    if ac.getFocusedCar() == incident_car:
+                        if now - dic[tmpKey] < incidentDuration:
+                            overrideCar = incident_car
+                            focusCarBattling = False
+                            bestBattleGap = 999.0
+                        else:
+                            try:
+                                del dic[tmpKey]
+                            except:
+                                pass
+                            overrideCar = -1
+            
+            # --- OVERTAKE LOCK LOGIC ---
+            overtake_car = -1
+            if bIsRace and anyDriverFinishing == 0 and not ABot_Talking:
+                tmpOvertakeKey = "OvertakeLockTime"
+                if tmpOvertakeKey in dic:
+                    if now - dic[tmpOvertakeKey] < 5.0:
+                        overrideCar = dic["OvertakeLockCar"]
+                        focusCarBattling = False
+                        bestBattleGap = 999.0
+                    else:
+                        try:
+                            del dic[tmpOvertakeKey]
+                            del dic["OvertakeLockCar"]
+                        except:
+                            pass
+                        overrideCar = -1
+                
+                if tmpOvertakeKey not in dic and "Car%dIncidentTime"%(overrideCar) not in dic:
+                    if prevCarPositions:
+                        for car in range(0, ac.getCarsCount()):
+                            if ac.isConnected(car) and not ac.isCarInPitlane(car):
+                                curr_pos = getPosition(car)
+                                if car in prevCarPositions:
+                                    prev_pos = prevCarPositions[car]
+                                    if curr_pos < prev_pos and ac.getCarState(car, acsys.CS.LapCount) > 0:
+                                        overtake_car = car
+                                        break
+                    
+                    if overtake_car >= 0:
+                        ConsoleLog("OVERTAKE: Driver %s gained position (P%d -> P%d). Locking focus for 5s!" % (safeName(overtake_car), prevCarPositions[overtake_car] + 1, getPosition(overtake_car) + 1))
+                        dic[tmpOvertakeKey] = now
+                        dic["OvertakeLockCar"] = overtake_car
+                        overrideCar = overtake_car
+                        lastFocusSwitch = now
+                        ac.focusCar(overtake_car)
+                        setCamera = 3 # Force TV camera
+                        ac.setCameraMode(3)
+                        cameraSwitchTimer = now
+                        cameraSwitchDelay = 5.0
+                        driverSwitched = 1
+
+                for car in range(0, ac.getCarsCount()):
+                    if ac.isConnected(car):
+                        prevCarPositions[car] = getPosition(car)
+            
             #DRIVER/CAR SWITCHING
             #first we'll iterate the drivers and check wether they need updates. Yes,
             #only 1 car per frame
@@ -1112,28 +1573,36 @@ def autoCam():
             if driverSwitchingEnabled == 1: # True:
                 #FOCUS CAR CHECKS
                 focusCarBattling = False
+                bestBattleGap = 999.0
                 
-                #we only need to monitor this during races and when offPaceCanOverrideBattles is 0
-                if not AppCom.runningorder == "" and bIsRace and offPaceCanOverrideBattles == 0:
+                orderStrings = []
+                if not AppCom.runningorder == "":
                     orderStrings = AppCom.runningorder.split("|")
-                    #ConsoleLog("200")
+                elif bIsRace:
+                    cars_list = []
+                    for car in range(0, ac.getCarsCount()):
+                        if ac.isConnected(car):
+                            pos = ac.getCarRealTimeLeaderboardPosition(car)
+                            cars_list.append((pos, car))
+                    cars_list.sort()
+                    orderStrings = [str(car) for pos, car in cars_list]
+
+                if len(orderStrings) > 0 and bIsRace:
                     for pos in range(len(orderStrings)):
-                        #ConsoleLog("300")
-                        if not orderStrings[pos] == "": #  and not orderStrings[pos + 1] == "":
+                        if not orderStrings[pos] == "":
                             car = int(orderStrings[pos])
                             if car == ac.getFocusedCar():
-                                #ConsoleLog("500")
                                 try:
-                                    if pos < len(orderStrings):
-                                        gap = gapBetweenCars(int(orderStrings[pos]), int(orderStrings[pos + 1]))
+                                    if pos < len(orderStrings) - 1 and not orderStrings[pos + 1] == "":
+                                        gap = gapBetweenCars(car, int(orderStrings[pos + 1]))
                                         if gap < battleGap:
-                                            #ConsoleLog("Focus Car is Battling")
                                             focusCarBattling = True
-                                    if pos > 0:
-                                        gap = gapBetweenCars(int(orderStrings[pos]), int(orderStrings[pos - 1]))
+                                            bestBattleGap = min(bestBattleGap, gap)
+                                    if pos > 0 and not orderStrings[pos - 1] == "":
+                                        gap = gapBetweenCars(car, int(orderStrings[pos - 1]))
                                         if gap < battleGap:
-                                            #ConsoleLog("Focus Car is Battling")
                                             focusCarBattling = True
+                                            bestBattleGap = min(bestBattleGap, gap)
                                 except:
                                     pass
             
@@ -1338,8 +1807,8 @@ def autoCam():
                                         ConsoleLog("Driver %s: dicKMH[%s] = %0.1f"%(driverName, keyPoTKMH, dicKMH[keyPoTKMH]))
                                         
                                     #current speed has to be greater than X% of current speed
-                                    #only set the KMH data during the first hotlap of a qually session?
-                                    if speedKMH > dicKMH[keyPoTKMH] * 0.5 and bIsQually and lapsSincePit == 1:
+                                    #only set the KMH data once a car is genuinely racing (lap > 0, above pit speed)
+                                    if speedKMH > dicKMH[keyPoTKMH] * 0.5 and lapCount > 0 and speedKMH > 30.0:
                                         #ConsoleLog("using %s on lap %d of qually stint to update KMH data"%(driverName, lapsSincePit))
                                         dicKMH[keyPoTKMH] = ((dicKMH[keyPoTKMH] * 9.0) + speedKMH) / 10.0
                                     if speedKMH < (dicKMH[keyPoTKMH] * 0.5) and lapCount > 0 and bIsRace and overrideCar < 0 and raceFinished == 0 and now - lastFocusSwitch > minSwitchDelay:
@@ -1357,8 +1826,8 @@ def autoCam():
                                             overrideCar = car
                                             lastFocusSwitch = now
                                             dic[tmpKey] = now                                            
-                                elif bIsQually and lapsSincePit == 1:
-                                    #ConsoleLog("using %s on lap %d of qually stint to set KMH data"%(driverName, lapsSincePit))
+                                elif lapCount > 0 and speedKMH > 30.0:
+                                    #ConsoleLog("using %s on lap %d to set KMH data"%(driverName, lapsSincePit))
                                     dicKMH[keyPoTKMH] = speedKMH
                                 
                                 
@@ -1533,43 +2002,58 @@ def autoCam():
                     
                 #search for the closest battle, starting from the top of the grid
                 #wait at least X laps before tracking battles?
-                if not AppCom.runningorder == "" and bIsRace and now - lastFocusSwitch > (max(minSwitchDelay, driverSwitchDelay - 5)) and ac.getCarState(0, acsys.CS.LapTime) > 0.0 and anyDriverFinishing == 0 and not ABot_Talking:
-                    #ConsoleLog("runningorder = %s"%(AppCom.runningorder))
+                orderStrings = []
+                if not AppCom.runningorder == "":
                     orderStrings = AppCom.runningorder.split("|")
-                    #ConsoleLog("200")
+                elif bIsRace:
+                    cars_list = []
+                    for car in range(0, ac.getCarsCount()):
+                        if ac.isConnected(car):
+                            pos = ac.getCarRealTimeLeaderboardPosition(car)
+                            cars_list.append((pos, car))
+                    cars_list.sort()
+                    orderStrings = [str(car) for pos, car in cars_list]
+
+                if len(orderStrings) > 0 and bIsRace and now - lastFocusSwitch > (max(minSwitchDelay, driverSwitchDelay - 5)) and ac.getCarState(0, acsys.CS.LapTime) > 0.0 and anyDriverFinishing == 0 and not ABot_Talking:
+                    best_score = -1.0
                     battleCar = -1
-                    smallestGap = battleGap
                     kmh1 = 0
                     kmh2 = 0
                     for pos in range(len(orderStrings) - 1):
-                        #ConsoleLog("300")
                         if not orderStrings[pos] == "" and not orderStrings[pos + 1] == "":
-                            if not ac.isCarInPitlane(int(orderStrings[pos])) and not ac.isCarInPitlane(int(orderStrings[pos + 1])):
-                                #ConsoleLog("pos = (%s), pos + 1 = (%s)"%(orderStrings[pos], orderStrings[pos + 1]))
-                                gap = gapBetweenCars(int(orderStrings[pos]), int(orderStrings[pos + 1]))
-                                if gap < smallestGap:
-                                    smallestGap = gap
-                                    #ConsoleLog("battleGap between %d and %d = %0.2f"%(int(orderStrings[pos]), int(orderStrings[pos + 1]), gap))
-                                    if not int(orderStrings[pos + 1]) == ac.getFocusedCar() and not int(orderStrings[pos]) == ac.getFocusedCar():
-                                        #change the focus to this battle?
-                                        if (leadersOverClosest == 0) or (leadersOverClosest == 1 and battleCar < 0):
-                                            tmpkmh1 = ac.getCarState(int(orderStrings[pos]),acsys.CS.SpeedKMH)
-                                            tmpkmh2 = ac.getCarState(int(orderStrings[pos + 1]),acsys.CS.SpeedKMH)
-                                            if tmpkmh1 > minPitKMH and tmpkmh2 > minPitKMH:
-                                                if abs((tmpkmh1 - tmpkmh2) / tmpkmh1) * 100 < battleKMHPercentDiff:
-                                                    battleCar = int(orderStrings[pos + 1])
-                                                    kmh1 = tmpkmh1
-                                                    kmh2 = tmpkmh2
-                                #else:
-                                #    ConsoleLog("Gap between %d and %d = %0.2f"%(int(orderStrings[pos]), int(orderStrings[pos + 1]), gap))
+                            car1 = int(orderStrings[pos])
+                            car2 = int(orderStrings[pos + 1])
+                            if not ac.isCarInPitlane(car1) and not ac.isCarInPitlane(car2):
+                                gap = gapBetweenCars(car1, car2)
+                                if gap < battleGap:
+                                    # Pos weight decay (front priority)
+                                    pos_weight = math.pow(positionDecay, pos)
+                                    # Gap score: closer is better
+                                    gap_score = 1.0 - (gap / battleGap)
+                                    score = gap_score * pos_weight
+                                    
+                                    # Bias to stay on currently focused battle to avoid flickering
+                                    if car1 == ac.getFocusedCar() or car2 == ac.getFocusedCar():
+                                        score *= 1.15
+                                        
+                                    if score > best_score:
+                                        # Verify speed is reasonable (not crashed or standing)
+                                        tmpkmh1 = ac.getCarState(car1, acsys.CS.SpeedKMH)
+                                        tmpkmh2 = ac.getCarState(car2, acsys.CS.SpeedKMH)
+                                        if tmpkmh1 > minPitKMH and tmpkmh2 > minPitKMH:
+                                            # Use the configured battleKMHPercentDiff threshold
+                                            if abs((tmpkmh1 - tmpkmh2) / tmpkmh1) * 100 < battleKMHPercentDiff:
+                                                best_score = score
+                                                battleCar = car2
+                                                bestBattleGap = gap
+                                                kmh1 = tmpkmh1
+                                                kmh2 = tmpkmh2
                     if battleCar >= 0:
                         overrideCar = battleCar
                         focusCarBattling = True
                         lastFocusSwitch = now
                         if verbose == 1:
-                            #ConsoleLog("Reporting BATTLE SPEEDS")
-                            ConsoleLog("Setting overrideCar = battleCar for %s, kmh1 = %0.1f, kmh2 = %0.1f, diff = %0.1f, percent = %0.4f"%(safeName(overrideCar), kmh1, kmh2, abs(kmh1 - kmh2), abs((kmh1 - kmh2) / kmh1) * 100))
-                            #ConsoleLog("Reporting BATTLE SPEEDS DONE")
+                            ConsoleLog("Setting overrideCar = battleCar (Score: %0.3f, Gap: %0.2fs) for %s, kmh1 = %0.1f, kmh2 = %0.1f, diff = %0.1f"%(best_score, bestBattleGap, safeName(overrideCar), kmh1, kmh2, abs(kmh1 - kmh2)))
                                 
                         #if not car == "":
                         #    ConsoleLog("Checking to see if car %d is in a battle"%(int(car)))
@@ -1602,17 +2086,25 @@ def autoCam():
                                 ConsoleLog("Forcing PitLane Cam %d"%(setCamera))
                         else:
                             if focusCarBattling:
-                                #grab a camera from the battleCams
-                                setCamera = cameraSwitching["Guess1"]
-                                if verbose > 0:
-                                    ConsoleLog("Default BattleCam from cameraSwitching %d"%(setCamera))
-                                intGuess = randInRange(1, len(battleCamSwitching))
-                                tmpKey = "Guess%d"%(intGuess)
-                                if tmpKey in battleCamSwitching:
-                                    setCamera = battleCamSwitching[tmpKey]
-                                    cameraSwitchDelay = battleCamDelay["Delay%d"%(intGuess)]
+                                if dynamicChaseCam == 1:
+                                    if bestBattleGap < tvCamThreshold:
+                                        setCamera = 3 # Track TV
+                                        cameraSwitchDelay = 12.0
+                                        if verbose > 0:
+                                            ConsoleLog("Dynamic Chase Cam (Override): Side-by-side (Gap: %.3fs). Forcing TV Camera." % bestBattleGap)
+                                    elif bestBattleGap < chaseOnboardThreshold:
+                                        setCamera = 0 # Cockpit camera of chasing car
+                                        cameraSwitchDelay = 6.0
+                                        if verbose > 0:
+                                            ConsoleLog("Dynamic Chase Cam (Override): Chasing (Gap: %.3fs). Forcing Onboard." % bestBattleGap)
+                                    else:
+                                        setCamera = 3
+                                        cameraSwitchDelay = 15.0
+                                else:
+                                    setCamera = 3
+                                    cameraSwitchDelay = 15.0
                                     if verbose > 0:
-                                        ConsoleLog("Switching to battle camera %d, cameraSwitchDelay = %0.0f"%(setCamera, cameraSwitchDelay))
+                                        ConsoleLog("Forcing Track Camera (3) during battle, cameraSwitchDelay = 15")
                                 
                                 #if verbose == 1:
                                 #    ConsoleLog("override car causing camera switch to %d"%(setCamera))
@@ -1662,38 +2154,24 @@ def autoCam():
                             
                             #if verbose == 1:
                             #    ConsoleLog("Seeking Next Car: now = %d"%(now))
-                            nextCar = cars[0] #mostInteresting?
-                            minDistance = 10003
+                            nextCar = cars[0]
+                            best_score = -99999.0
                             for car in cars.values():
-                                strErr = "1880"
-                                if verbose == 4:
-                                    ConsoleLog("%s"%strErr)
-                                
-                                if (not canSwitch(nextCar.slotId) or not canSwitch(ac.getFocusedCar())) and canSwitch(car.slotId):
-                                    nextCar = car
-                                    #distance = car.distanceTo(xcar)
-                                    #minDistance = distance                            
+                                if not canSwitch(car.slotId):
+                                    continue
                                 for xcar in cars.values():
-                                    strErr = "1890 car %d, xcar %d"%(car.slotId, xcar.slotId)
-                                    if verbose == 4:
-                                        ConsoleLog("%s"%strErr)
-                                    
+                                    if car.slotId == xcar.slotId or not canSwitch(xcar.slotId):
+                                        continue
                                     distance = car.distanceTo(xcar)
-                                    strErr = "1891"
-                                    if verbose == 4:
-                                        ConsoleLog("%s"%strErr)
-                                    
-                                    if distance < minDistance and canSwitch(car.slotId):
-                                        strErr = "1892"
-                                        if verbose == 4:
-                                            ConsoleLog("%s"%strErr)
+                                    if distance < 10000:
+                                        # Score: closer distance is better, front of grid is better.
+                                        pos = getPosition(car.slotId)
+                                        pos_weight = math.pow(positionDecay, pos)
+                                        score = (1000.0 - distance) * pos_weight
                                         
-                                        nextCar = car
-                                        strErr = "1893"
-                                        if verbose == 4:
-                                            ConsoleLog("%s"%strErr)
-                                        
-                                        minDistance = distance
+                                        if score > best_score:
+                                            best_score = score
+                                            nextCar = car
                             
                             strErr = "1895"
                             #we'll focus the (probably) most interesting situation now.
@@ -1897,6 +2375,26 @@ def autoCam():
                                         cameraSwitchDelay = cameraDelay["Delay%d"%(intGuess)]
                                     else:
                                         ConsoleLog("cameraSwitching[%s] not found"%(tmpKey))
+                                
+                                # Force Track Cam or Onboard on close battles
+                                if forceTrackCamOnCloseBattles == 1 and focusCarBattling:
+                                    if dynamicChaseCam == 1:
+                                        if bestBattleGap < tvCamThreshold:
+                                            nextCam = 3 # Force TV/Track Camera
+                                            cameraSwitchDelay = max(10.0, cameraSwitchDelay)
+                                            if verbose == 1:
+                                                ConsoleLog("Dynamic Chase Cam: Side-by-side (Gap: %.3fs). Forcing TV Camera." % bestBattleGap)
+                                        elif bestBattleGap < chaseOnboardThreshold:
+                                            nextCam = 0 # Force Cockpit
+                                            cameraSwitchDelay = max(6.0, cameraSwitchDelay)
+                                            if verbose == 1:
+                                                ConsoleLog("Dynamic Chase Cam: Chasing (Gap: %.3fs). Forcing Onboard." % bestBattleGap)
+                                        else:
+                                            nextCam = 3 # Track Cam
+                                            cameraSwitchDelay = max(12.0, cameraSwitchDelay)
+                                    else:
+                                        nextCam = 3 # Track Cam
+                                        cameraSwitchDelay = max(12.0, cameraSwitchDelay)
                                     
                                 if True: # tmpKey in cameraSwitching:                        
                                     currentCam = ac.getCameraMode()
