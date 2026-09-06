@@ -123,6 +123,14 @@ user32.SendInput.argtypes = (wintypes.UINT, # nInputs
 camWindow = 0
 btnToggle = 0
 lblInfo = 0
+hudWindow = 0
+hudName = 0
+hudCar = 0
+hudPos = 0
+hudLast = 0
+hudBest = 0
+hudGapAhead = 0
+hudGapBehind = 0
 windowTitle = "Auto Cam"
 SettingsINI = 'apps\\python\\AutoCam\\AutoCam.ini'
 HideIcon = 1
@@ -414,6 +422,83 @@ def setLabelColor(ctrl, r, g, b, a=1.0):
         pass
 
 
+def buildHudWindow():
+    global hudWindow, hudName, hudCar, hudPos, hudLast, hudBest, hudGapAhead, hudGapBehind
+    hudWindow = ac.newApp("AutoCam HUD")
+    ac.setSize(hudWindow, 260, 134)
+    ac.drawBorder(hudWindow, 0)
+    ac.setBackgroundOpacity(hudWindow, 0.6)
+
+    hudName = ac.addLabel(hudWindow, "--")
+    ac.setPosition(hudName, 10, 6)
+    ac.setFontSize(hudName, 13)
+    setLabelColor(hudName, *COLOR_GOLD)
+
+    hudCar = ac.addLabel(hudWindow, "--")
+    ac.setPosition(hudCar, 10, 28)
+    ac.setFontSize(hudCar, 12)
+
+    hudPos = ac.addLabel(hudWindow, "--")
+    ac.setPosition(hudPos, 10, 46)
+    ac.setFontSize(hudPos, 12)
+
+    hudLast = ac.addLabel(hudWindow, "--")
+    ac.setPosition(hudLast, 10, 64)
+    ac.setFontSize(hudLast, 12)
+
+    hudBest = ac.addLabel(hudWindow, "--")
+    ac.setPosition(hudBest, 10, 82)
+    ac.setFontSize(hudBest, 12)
+
+    hudGapAhead = ac.addLabel(hudWindow, "--")
+    ac.setPosition(hudGapAhead, 10, 100)
+    ac.setFontSize(hudGapAhead, 12)
+
+    hudGapBehind = ac.addLabel(hudWindow, "--")
+    ac.setPosition(hudGapBehind, 10, 118)
+    ac.setFontSize(hudGapBehind, 12)
+
+
+def updateHud():
+    global hudWindow, hudName, hudCar, hudPos, hudLast, hudBest, hudGapAhead, hudGapBehind
+    global distanceOrder, distancePos
+    if not hudWindow:
+        return
+    try:
+        car = ac.getFocusedCar()
+        if car < 0 or not ac.isConnected(car):
+            for ctrl in (hudName, hudCar, hudPos, hudLast, hudBest, hudGapAhead, hudGapBehind):
+                ac.setText(ctrl, "--")
+            return
+
+        ac.setText(hudName, ac.getDriverName(car))
+        ac.setText(hudCar, ac.getCarName(car))
+        ac.setText(hudPos, "P%d/%d" % (getPosition(car) + 1, ac.getCarsCount()))
+
+        last = ac.getCarState(car, acsys.CS.LastLap)
+        best = ac.getCarState(car, acsys.CS.BestLap)
+        ac.setText(hudLast, "Last  " + (formatTime(last) if last > 0 else "--:--.---"))
+        ac.setText(hudBest, "Best  " + (formatTime(best) if best > 0 else "--:--.---"))
+
+        idx = distancePos.get(car, -1)
+        if idx < 0 or idx >= len(distanceOrder):
+            ac.setText(hudGapAhead, "--")
+            ac.setText(hudGapBehind, "--")
+        else:
+            if idx > 0:
+                g = gapBetweenCars(distanceOrder[idx - 1], car)
+                ac.setText(hudGapAhead, "Ahead  %s" % (("%+.2f s" % g) if g < 900 else "--:--.---"))
+            else:
+                ac.setText(hudGapAhead, "Ahead  LEADER")
+            if idx + 1 < len(distanceOrder):
+                g = gapBetweenCars(car, distanceOrder[idx + 1])
+                ac.setText(hudGapBehind, "Behind  %s" % (("%+.2f s" % g) if g < 900 else "--:--.---"))
+            else:
+                ac.setText(hudGapBehind, "Behind  --:--.---")
+    except Exception as e:
+        ConsoleLog("updateHud %s" % e)
+
+
 def acMain(ac_version):
     global camWindow, btnToggle, lblInfo, cmExtensions, serverName, serverIP
     global strTimestamp, noDrivableCamWithVirtualMirror
@@ -576,7 +661,8 @@ def acMain(ac_version):
         #ac.setPosition(lblInfo, 5, 65)
         #ac.setSize(lblInfo, 80, 25)
         #ac.setFontSize(lblInfo, 12)
-    
+
+        buildHudWindow()
         InitCars()
         ConsoleLog("acMain finished")
         
@@ -1238,8 +1324,9 @@ def acUpdate(deltaT):
 #############################################################################################
 
     autoCam()
-    
-#def onFormRender(deltaT):    
+    updateHud()
+
+#def onFormRender(deltaT):
 #    try:
 #        ConsoleLog("form is being rendered")
 #    except Exception as e:
