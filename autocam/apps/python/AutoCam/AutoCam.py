@@ -1355,6 +1355,12 @@ def autoCam():
     anyDriverFinishing = 0
     focusCarBattling = False
 
+    # rebuild the car wrappers if the connected-car count changed (e.g. cars
+    # join/leave, or the app loaded before the grid was populated)
+    if len(cars) != ac.getCarsCount():
+        currentId = 0
+        InitCars()
+
     #ac.setBackgroundOpacity(camWindow, 0)
     #ac.setIconPosition(camWindow, -7000, -3000)
     #ac.setTitle(camWindow, "")
@@ -2147,7 +2153,7 @@ def autoCam():
                         #ConsoleLog("really need a new car now at %d"%(now))
                         currentId = 0
                         #now = time.clock()
-                        if now - lastFocusSwitch > driverSwitchDelay or not canSwitch(ac.getFocusedCar()):
+                        if cars and (now - lastFocusSwitch > driverSwitchDelay or not canSwitch(ac.getFocusedCar())):
                             strErr = "1870"
                             if verbose == 4:
                                 ConsoleLog("%s"%strErr)
