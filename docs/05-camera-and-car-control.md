@@ -59,7 +59,10 @@ conn  = ac.isConnected(car)
 ```
 
 > 本项目 `getPosition(car)` 优先使用广播 App（`AppCom.runningorder`）传递的 running order，
-> 失败时回退到 `ac.getCarRealTimeLeaderboardPosition(car)`，从而支持离线/本地回放。
+> 失败时回退到按赛道距离排序的 `distanceOrder`（`(LapCount + NormalizedSplinePosition)`，
+> 与 `gapBetweenCars` 同口径），从而在**回放**里也能自动导播——`ac.getCarRealTimeLeaderboardPosition`
+> 是 CSP 实时接口，只在 live 会话可用，回放里会抛 `Not available in replay only mode`，
+> 故已弃用。
 
 ## 常见逻辑模式（AutoCam）
 

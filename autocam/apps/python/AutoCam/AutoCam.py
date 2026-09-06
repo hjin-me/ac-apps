@@ -231,6 +231,11 @@ bestBattleGap = 999.0
 chkIncident = 0
 prevCarPositions = {}
 
+# per-frame distance-based running order (see computeDistanceOrder): distanceOrder
+# is the race order (P1 first), distancePos[car] is the 0-based position.
+distanceOrder = []
+distancePos = {}
+
 dynamicChaseCam = 1
 chaseOnboardThreshold = 0.8
 tvCamThreshold = 0.3
@@ -1126,30 +1131,39 @@ def acShutdown(*args):
     #ac.removeItem(camWindow)
 
     
-def getLivePosition(car):
-    # ac.getCarRealTimeLeaderboardPosition is a live-only CSP call: it raises
-    # "Not available in replay only mode" when AC is not in a live session. The
-    # director short-circuits on non-live, but the call can still fail transiently,
-    # so guard it and fall back to a position that keeps the car at the back of
-    # the ordering rather than crashing the frame.
-    try:
-        return ac.getCarRealTimeLeaderboardPosition(car)
-    except:
-        return 9999
+def computeDistanceOrder():
+    # Build the race order from total distance along the track. Uses the same
+    # (LapCount + NormalizedSplinePosition) metric as gapBetweenCars, so it works
+    # wherever getCarState returns per-car data — live AND replay — without the
+    # live-only CSP getCarRealTimeLeaderboardPosition call. Caches into the
+    # distanceOrder / distancePos globals and also returns the order for reuse.
+    global distanceOrder, distancePos
+    cars_list = []
+    trackLength = ac.getTrackLength(0)
+    for car in range(0, ac.getCarsCount()):
+        if ac.isConnected(car):
+            dist = (ac.getCarState(car, acsys.CS.LapCount) + ac.getCarState(car, acsys.CS.NormalizedSplinePosition)) * trackLength
+            cars_list.append((dist, car))
+    cars_list.sort()
+    cars_list.reverse()
+    distanceOrder = [car for dist, car in cars_list]
+    distancePos = {}
+    for idx, car in enumerate(distanceOrder):
+        distancePos[car] = idx
+    return distanceOrder
 
 def getPosition(car):
     tmpKey = "APPS:BROADCAST APP"
     if order == "": #not tmpKey in dicPython:
-        #ConsoleLog("returning 100 getCarRealTimeLeaderboardPosition for dic[%s]"%(tmpKey))
-        return getLivePosition(car)
+        # no broadcast app: fall back to the distance-based race order
+        return distancePos.get(car, ac.getCarsCount())
     else:
         tmpKey = "Car%dPosition"%(car) #getPosition
         if tmpKey in dic:
             #ConsoleLog("dic[%s] = %s"%(tmpKey, dic[tmpKey]))
             return int(dic[tmpKey])
         else:
-            #ConsoleLog("returning 200 getCarRealTimeLeaderboardPosition for dic[%s]"%(tmpKey))
-            return getLivePosition(car)
+            return distancePos.get(car, ac.getCarsCount())
     
 def setPositions():
     #ConsoleLog("setPositions subroutine")
@@ -1282,12 +1296,11 @@ def autoCam():
 
     sim_info_obj = AutoCam_sim_info.AutoCam_SimInfo()
 
-    # AutoCam is a live-broadcast director. AC/CSP gate the APIs it relies on
-    # (focusCar / setCameraMode / getCarRealTimeLeaderboardPosition) so they
-    # only work during a live session; outside one they raise "Not available in
-    # replay only mode". Short-circuit the whole director so it never makes
-    # those gated calls while AC is showing a replay, is paused, or is in the menu.
-    if sim_info_obj.graphics.status != AutoCam_sim_info.AC_LIVE:
+    # AutoCam is a live-broadcast director, but it can also direct a replay: the
+    # race order is now computed from track distance (computeDistanceOrder), which
+    # needs no live-only call, so replay is safe to direct. Stand down when the
+    # game is fully off / paused / in the menu.
+    if sim_info_obj.graphics.status not in (AutoCam_sim_info.AC_LIVE, AutoCam_sim_info.AC_REPLAY):
         return
 
     # rebuild the car wrappers if the connected-car count changed (e.g. cars
@@ -1295,6 +1308,9 @@ def autoCam():
     if len(cars) != ac.getCarsCount():
         currentId = 0
         InitCars()
+
+    # refresh the distance-based running order used by getPosition / battle logic
+    computeDistanceOrder()
 
     #ac.setBackgroundOpacity(camWindow, 0)
     #ac.setIconPosition(camWindow, -7000, -3000)
@@ -1327,8 +1343,12 @@ def autoCam():
     if sim_info_obj.graphics.session == 2:
         bIsRace = True
 
+    # a replay is always a broadcast of a race, so direct it as one
+    if sim_info_obj.graphics.status == AutoCam_sim_info.AC_REPLAY:
+        bIsRace = True
+
     totalLaps = sim_info_obj.graphics.numberOfLaps
-    
+
     strErr = "110"
     if verbose == 4:
         ConsoleLog("%s"%strErr)
@@ -1516,13 +1536,7 @@ def autoCam():
                 if not AppCom.runningorder == "":
                     orderStrings = AppCom.runningorder.split("|")
                 elif bIsRace:
-                    cars_list = []
-                    for car in range(0, ac.getCarsCount()):
-                        if ac.isConnected(car):
-                            pos = getLivePosition(car)
-                            cars_list.append((pos, car))
-                    cars_list.sort()
-                    orderStrings = [str(car) for pos, car in cars_list]
+                    orderStrings = [str(car) for car in distanceOrder]
 
                 if len(orderStrings) > 0 and bIsRace:
                     for pos in range(len(orderStrings)):
@@ -1943,13 +1957,7 @@ def autoCam():
                 if not AppCom.runningorder == "":
                     orderStrings = AppCom.runningorder.split("|")
                 elif bIsRace:
-                    cars_list = []
-                    for car in range(0, ac.getCarsCount()):
-                        if ac.isConnected(car):
-                            pos = getLivePosition(car)
-                            cars_list.append((pos, car))
-                    cars_list.sort()
-                    orderStrings = [str(car) for pos, car in cars_list]
+                    orderStrings = [str(car) for car in distanceOrder]
 
                 if len(orderStrings) > 0 and bIsRace and now - lastFocusSwitch > (max(minSwitchDelay, driverSwitchDelay - 5)) and ac.getCarState(0, acsys.CS.LapTime) > 0.0 and anyDriverFinishing == 0 and not ABot_Talking:
                     best_score = -1.0
