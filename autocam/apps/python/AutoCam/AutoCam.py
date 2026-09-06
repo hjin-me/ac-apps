@@ -146,6 +146,7 @@ allDriversFinished = 0
 defaultSet = 0 #have we set the default cam yet?
 defaultCamera = 0 #drive cam?
 setCamera = 0     #last specified camera
+cameraReason = "" #human-readable reason for the current setCamera
 
 backgroundOpacity =  0.5
 drawBorderVar = 0
@@ -435,6 +436,16 @@ def onVerboseToggle(*args):
     except Exception as e:
         ConsoleLog("Error in onVerboseToggle: %s" % e)
 
+def setCheckbox(ctrl, value):
+    # stock AC's ac module exposes addCheckBox/isChecked but not a programmatic
+    # checkbox setter in every build; wait for it, and skip silently if absent
+    # so acMain() still finishes building the UI.
+    try:
+        ac.setChecked(ctrl, value)
+    except AttributeError:
+        pass
+
+
 def acMain(ac_version):
     global camWindow, btnToggle, lblInfo, cmExtensions, serverName, serverIP
     global strTimestamp, noDrivableCamWithVirtualMirror
@@ -556,7 +567,7 @@ def acMain(ac_version):
         chkPreferLeader = ac.addCheckBox(camWindow, "Prefer Leader Battles")
         ac.setPosition(chkPreferLeader, 15, 175)
         ac.setSize(chkPreferLeader, 250, 22)
-        ac.setChecked(chkPreferLeader, leadersOverClosest)
+        setCheckbox(chkPreferLeader, leadersOverClosest)
         ac.addOnClickedListener(chkPreferLeader, onPreferLeaderToggle)
 
         # --- Section 2: Dynamic Chase Camera ---
@@ -568,7 +579,7 @@ def acMain(ac_version):
         chkDynamicChase = ac.addCheckBox(camWindow, "Enable Dynamic Chase Cam")
         ac.setPosition(chkDynamicChase, 15, 230)
         ac.setSize(chkDynamicChase, 250, 22)
-        ac.setChecked(chkDynamicChase, dynamicChaseCam)
+        setCheckbox(chkDynamicChase, dynamicChaseCam)
         ac.addOnClickedListener(chkDynamicChase, onDynamicChaseToggle)
 
         # Spinner for tvCamThreshold
@@ -602,7 +613,7 @@ def acMain(ac_version):
         ac.setPosition(chkForceTV, 15, 320)
         ac.setSize(chkForceTV, 250, 22)
         chkForceTVVal = 1 if forceTrackCamOnCloseBattles == 1 else 0
-        ac.setChecked(chkForceTV, chkForceTVVal)
+        setCheckbox(chkForceTV, chkForceTVVal)
         ac.addOnClickedListener(chkForceTV, onForceTVToggle)
 
         # --- Section 3: Incident Settings ---
@@ -614,7 +625,7 @@ def acMain(ac_version):
         chkIncident = ac.addCheckBox(camWindow, "Enable Incident Detection")
         ac.setPosition(chkIncident, 15, 375)
         ac.setSize(chkIncident, 250, 22)
-        ac.setChecked(chkIncident, incidentDetection)
+        setCheckbox(chkIncident, incidentDetection)
         ac.addOnClickedListener(chkIncident, onIncidentToggle)
 
         # Spinner for incidentDuration
@@ -635,7 +646,7 @@ def acMain(ac_version):
         ac.setPosition(chkVerbose, 15, 440)
         ac.setSize(chkVerbose, 250, 22)
         chkVerboseVal = 1 if verbose == 4 else 0
-        ac.setChecked(chkVerbose, chkVerboseVal)
+        setCheckbox(chkVerbose, chkVerboseVal)
         ac.addOnClickedListener(chkVerbose, onVerboseToggle)
 
         # Save Settings Button
@@ -1344,6 +1355,15 @@ def formatTime(t):
     return time
     
         
+def SetCamera(cam, reason):
+    # record the desired camera and why it was chosen; does NOT apply it.
+    # actual ac.setCameraMode() calls (and their logs) live at the apply sites.
+    global setCamera, cameraReason
+    if cam != setCamera:
+        cameraReason = reason
+    setCamera = cam
+
+
 def autoCam():
     global currentId, lastFocusSwitch, defaultSet, cameraSwitchTimer, cameraSwitchDelay
     global setCamera, lastPreferred, countdownFocusSwitch, overrideCar
@@ -1508,7 +1528,9 @@ def autoCam():
                         ac.focusCar(incident_car)
                         overrideCar = incident_car
                         lastFocusSwitch = now
-                        setCamera = 3 # Force TV camera
+                        SetCamera(3, "incident: %s" % safeName(incident_car))
+                        if ac.getCameraMode() != 3:
+                            ConsoleLog("Camera switch -> mode 3 (incident: %s)" % safeName(incident_car))
                         ac.setCameraMode(3)
                         cameraSwitchTimer = now
                         cameraSwitchDelay = incidentDuration
@@ -1561,7 +1583,9 @@ def autoCam():
                         overrideCar = overtake_car
                         lastFocusSwitch = now
                         ac.focusCar(overtake_car)
-                        setCamera = 3 # Force TV camera
+                        SetCamera(3, "overtake: %s" % safeName(overtake_car))
+                        if ac.getCameraMode() != 3:
+                            ConsoleLog("Camera switch -> mode 3 (overtake: %s)" % safeName(overtake_car))
                         ac.setCameraMode(3)
                         cameraSwitchTimer = now
                         cameraSwitchDelay = 5.0
@@ -1896,7 +1920,7 @@ def autoCam():
                                                         ConsoleLog("Driver %s at %s in pit lane driving %0.2fKMH"%(safeName(car), strPoT, ac.getCarState(car,acsys.CS.SpeedKMH)))
                                                     overrideCar = car
                                                     lastFocusSwitch = now
-                                                    setCamera = pitCameraSwitching["Guess1"]
+                                                    SetCamera(pitCameraSwitching["Guess1"], "pit lane: %s" % safeName(car))
                                                     dic[tmpKey] = now
                                                     if verbose > 0:
                                                         ConsoleLog("overrideCar = %d, setCamera = %d"%(overrideCar, setCamera))                                        
@@ -1927,9 +1951,9 @@ def autoCam():
                                                 if verbose > 0:
                                                     ConsoleLog("Driver %s driving towards pit entry"%(safeName(car)))
                                                 overrideCar = car
-                                                setCamera = pitCameraSwitching["Guess1"]
-                                    
-                                    
+                                                SetCamera(pitCameraSwitching["Guess1"], "pit entry: %s" % safeName(car))
+
+
                                 #ac.console("avgKMH for %s at %0.3f = %0.1f"%(carName, currPoT, dicKMH[keyPoTKMH]))
                         #else: #THIS IS NOT RELIABLE
                         #    #clear this value when a driver enteres the pits (get them entering and exiting)
@@ -2087,27 +2111,27 @@ def autoCam():
                         ac.focusCar(overrideCar)
                         driverSwitched = 1
                         if ac.isCarInPitlane(overrideCar):
-                            setCamera = pitCameraSwitching["Guess1"]
+                            SetCamera(pitCameraSwitching["Guess1"], "pit lane: %s" % safeName(overrideCar))
                             if verbose > 0:
                                 ConsoleLog("Forcing PitLane Cam %d"%(setCamera))
                         else:
                             if focusCarBattling:
                                 if dynamicChaseCam == 1:
                                     if bestBattleGap < tvCamThreshold:
-                                        setCamera = 3 # Track TV
+                                        SetCamera(3, "battle: side-by-side (gap %.3fs)" % bestBattleGap)
                                         cameraSwitchDelay = 12.0
                                         if verbose > 0:
                                             ConsoleLog("Dynamic Chase Cam (Override): Side-by-side (Gap: %.3fs). Forcing TV Camera." % bestBattleGap)
                                     elif bestBattleGap < chaseOnboardThreshold:
-                                        setCamera = 0 # Cockpit camera of chasing car
+                                        SetCamera(0, "battle: chasing (gap %.3fs)" % bestBattleGap)
                                         cameraSwitchDelay = 6.0
                                         if verbose > 0:
                                             ConsoleLog("Dynamic Chase Cam (Override): Chasing (Gap: %.3fs). Forcing Onboard." % bestBattleGap)
                                     else:
-                                        setCamera = 3
+                                        SetCamera(3, "battle: track")
                                         cameraSwitchDelay = 15.0
                                 else:
-                                    setCamera = 3
+                                    SetCamera(3, "battle: forced TV")
                                     cameraSwitchDelay = 15.0
                                     if verbose > 0:
                                         ConsoleLog("Forcing Track Camera (3) during battle, cameraSwitchDelay = 15")
@@ -2267,28 +2291,29 @@ def autoCam():
 
                     #force the F5 cam?
                     if not ac.isCarInPitlane(ac.getFocusedCar()):
-                        setCamera = countdownCam
+                        SetCamera(countdownCam, "countdown")
         
                     
                 if bIsRace and ac.getCarState(0, acsys.CS.LapTime) > 0.0 and ac.getCarState(0, acsys.CS.LapTime) < 1000.0 and ac.getCameraMode() == countdownCam:
                     if verbose > 0:
                         ConsoleLog("Forcing Camera to defaultCamera %d"%(defaultCamera))
                     #force the F5 cam?
-                    setCamera = defaultCamera
-                    
-            
+                    SetCamera(defaultCamera, "default (post-countdown)")
+
+
                 if defaultSet == 0:
                     defaultSet = 1
-                    setCamera = defaultCamera
+                    SetCamera(defaultCamera, "default (init)")
                     if verbose > 0:
                         ConsoleLog("ac.setCameraMode - Setting default camera to %d"%(setCamera))
-                    ac.setCameraMode(setCamera)
+                    if ac.getCameraMode() != defaultCamera:
+                        ConsoleLog("Camera switch -> mode %d (default)" % defaultCamera)
+                    ac.setCameraMode(defaultCamera)
                     
                     #ConsoleLog("camera set to %d"%(defaultCamera))
 
                 if not ac.getCameraMode() == setCamera:
-                    if verbose > 0:
-                        ConsoleLog("ac.setCameraMode - ac.getCameraMode() = %d, setting camera back to %d"%(ac.getCameraMode(), setCamera))
+                    ConsoleLog("Camera switch -> mode %d (%s)" % (setCamera, cameraReason if cameraReason else "restore"))
                     ac.setCameraMode(setCamera)
                     if setCamera == 1: #car cameras
                         try:
@@ -2320,7 +2345,7 @@ def autoCam():
                         #for when a driver has focus and drives into the pits
                         if verbose > 0:
                             ConsoleLog("Forcing defaultPitCam %d for %s"%(pitCameraSwitching["Guess1"], safeName(ac.getFocusedCar())))
-                        setCamera = pitCameraSwitching["Guess1"]
+                        SetCamera(pitCameraSwitching["Guess1"], "pit lane: %s" % safeName(ac.getFocusedCar()))
                             
                             
                     
@@ -2336,10 +2361,10 @@ def autoCam():
                             #ConsoleLog("GUESS 200")
                             tmpKey = "Guess%d"%(intGuess)
                             if tmpKey in pitCameraSwitching:
-                                setCamera = pitCameraSwitching[tmpKey]
+                                SetCamera(pitCameraSwitching[tmpKey], "pit lane (timer)")
                                 cameraSwitchDelay = pitCameraDelay["Delay%d"%(intGuess)]
-                                if verbose > 0:
-                                    ConsoleLog("ac.setCameraMode - Switching to pit camera %d, cameraSwitchDelay = %0.0f"%(setCamera, cameraSwitchDelay))
+                                if ac.getCameraMode() != setCamera:
+                                    ConsoleLog("Camera switch -> mode %d (pit lane: timer)" % setCamera)
                                 ac.setCameraMode(setCamera)
                             else:
                                 ConsoleLog("Pit Guess%d not found"%(intGuess))                        
@@ -2359,7 +2384,8 @@ def autoCam():
                             else:
                                 #Jon's adjusted logic
                                 #how often to the switch cameras?
-                                
+                                nextCamReason = "weighted fallback"
+
                                 if ac.getCarState(ac.getFocusedCar(), acsys.CS.LapCount) < 1:
                                     #ConsoleLog("using first lap logic")
                                     intGuess = randInRange(1, len(firstLapSwitching))
@@ -2368,6 +2394,7 @@ def autoCam():
                                     if tmpKey in firstLapSwitching:
                                         #ConsoleLog("GUESS 400")
                                         nextCam = firstLapSwitching["Guess%d"%(intGuess)]
+                                        nextCamReason = "first lap"
                                         cameraSwitchDelay = firstLapDelay["Delay%d"%(intGuess)]
                                     else:
                                         ConsoleLog("firstLapSwitching[%s] not found"%(tmpKey))
@@ -2378,6 +2405,7 @@ def autoCam():
                                     tmpKey = "Guess%d"%(intGuess)
                                     if tmpKey in cameraSwitching:
                                         nextCam = cameraSwitching["Guess%d"%(intGuess)]
+                                        nextCamReason = "weighted fallback"
                                         cameraSwitchDelay = cameraDelay["Delay%d"%(intGuess)]
                                     else:
                                         ConsoleLog("cameraSwitching[%s] not found"%(tmpKey))
@@ -2387,19 +2415,23 @@ def autoCam():
                                     if dynamicChaseCam == 1:
                                         if bestBattleGap < tvCamThreshold:
                                             nextCam = 3 # Force TV/Track Camera
+                                            nextCamReason = "battle: side-by-side (gap %.3fs)" % bestBattleGap
                                             cameraSwitchDelay = max(10.0, cameraSwitchDelay)
                                             if verbose == 1:
                                                 ConsoleLog("Dynamic Chase Cam: Side-by-side (Gap: %.3fs). Forcing TV Camera." % bestBattleGap)
                                         elif bestBattleGap < chaseOnboardThreshold:
                                             nextCam = 0 # Force Cockpit
+                                            nextCamReason = "battle: chasing (gap %.3fs)" % bestBattleGap
                                             cameraSwitchDelay = max(6.0, cameraSwitchDelay)
                                             if verbose == 1:
                                                 ConsoleLog("Dynamic Chase Cam: Chasing (Gap: %.3fs). Forcing Onboard." % bestBattleGap)
                                         else:
                                             nextCam = 3 # Track Cam
+                                            nextCamReason = "battle: track"
                                             cameraSwitchDelay = max(12.0, cameraSwitchDelay)
                                     else:
                                         nextCam = 3 # Track Cam
+                                        nextCamReason = "battle: forced TV"
                                         cameraSwitchDelay = max(12.0, cameraSwitchDelay)
                                     
                                 if True: # tmpKey in cameraSwitching:                        
@@ -2450,7 +2482,7 @@ def autoCam():
                                             if tmpKey in dicCars[carName]:
                                                 randomCamInt = dicCars[carName][tmpKey] #    randInRange(0,carCamCount)
                                                 ac.setCameraCar(randomCamInt,ac.getFocusedCar())
-                                                setCamera = nextCam
+                                                SetCamera(nextCam, nextCamReason)
                                                 if verbose > 0:
                                                     ConsoleLog("Car Cameras setCamera = %d, carCamera is set to %d"%(setCamera, randomCamInt))
                                             else:
@@ -2460,13 +2492,13 @@ def autoCam():
                                             carCamCount = ac.getCameraCarCount(currentId)
                                             randomCamInt = randInRange(0,carCamCount)
                                             ac.setCameraCar(randomCamInt,ac.getFocusedCar())
-                                            setCamera = nextCam
+                                            SetCamera(nextCam, nextCamReason)
                                             if verbose > 0:
                                                 ConsoleLog("carCamera is set to %d"%(randomCamInt))
                                     else:
-                                        setCamera = nextCam
-                                        if verbose > 0:
-                                            ConsoleLog("ac.setCameraMode - in else - nextcam is set to %d"%(setCamera))
+                                        SetCamera(nextCam, nextCamReason)
+                                        if ac.getCameraMode() != setCamera:
+                                            ConsoleLog("Camera switch -> mode %d (%s)" % (setCamera, nextCamReason))
                                         ac.setCameraMode(setCamera)
                                         
                                 else:
@@ -2474,12 +2506,13 @@ def autoCam():
 
                 if noDrivableCamWithVirtualMirror == 1 and (ac.getCameraMode() == 0 or ac.getCameraMode() == 2):
                     #do not allow the cockpit or the drivable cameras when a virtual mirror is detected
-                    setCamera = 1
+                    SetCamera(1, "virtual mirror override")
                     try:
                         if verbose > 0:
                             ConsoleLog("noDrivableCamWithVirtualMirror == 1 not allowing cockpit/drivable cams")
                         #bmw_m3_e30_dtm: 0 = Roof Out Front, 1 = Front Left Tire, 2 = Interior/Driver Out Front, 3 = Passenger Dash Out Front, 4 = Passenger Dash Showing Driver, 5 = Roof Showing Rear
                         ac.setCameraCar(dicCars[ac.getCarName(ac.getFocusedCar())]["Guess1"],ac.getFocusedCar())
+                        ConsoleLog("Camera switch -> mode 1 (virtual mirror override)")
                         ac.setCameraMode(setCamera)
                         if verbose > 0:
                             ConsoleLog("ac.setCameraMode - SET Car Camera Default to %d completed"%(dicCars[ac.getCarName(ac.getFocusedCar())]["Guess1"]))
