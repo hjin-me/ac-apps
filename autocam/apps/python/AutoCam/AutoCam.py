@@ -440,7 +440,7 @@ def updateHud():
             return
 
         ac.setText(hudName, ac.getDriverName(car))
-        ac.setText(hudCar, ac.getCarName(car))
+        ac.setText(hudCar, ac.getCarSkin(car))
         ac.setText(hudPos, "P%d/%d" % (getPosition(car) + 1, ac.getCarsCount()))
 
         last = ac.getCarState(car, acsys.CS.LastLap)
