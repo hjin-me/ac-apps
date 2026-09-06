@@ -391,6 +391,7 @@ def buildHudWindow():
         ac.setTitle(hudWindow, "")
     except:
         pass
+    ac.setIconPosition(hudWindow, 0, -9000)
     ac.setSize(hudWindow, 700, 90)
     ac.drawBorder(hudWindow, 0)
     ac.setBackgroundOpacity(hudWindow, 0.6)
