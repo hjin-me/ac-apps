@@ -144,9 +144,12 @@ autocam/
     避免虚拟后视镜遮挡。
 
 13. **游戏内设置 UI + 保存**
-    窗口内含滑条/切换按钮（战斗间隔、前位衰减、切换间隔、事故时长、动态追车、强制 TV、verbosity；
-    布尔项为自带状态的 toggle 按钮，因实机 `ac` 模块无 `isChecked`/`setChecked`），
-    点 **SAVE CONFIGURATION** 调 `WriteSettings()` 写回 `AutoCam.ini`（保留用户自定义机位表）。
+    窗口只暴露**核心设置**：启停开关、战斗间隔、动态追车开关、电视位阈值、事故开关、事故时长、SAVE。
+    布尔项渲染为自带状态的 toggle 按钮（实机 `ac` 模块无 `isChecked`/`setChecked`）；
+    其余细项（前位衰减 `positionDecay`、切换间隔 `driverSwitchDelay`、`leadersOverClosest`、
+    `chaseOnboardThreshold`、`forceTrackCamOnCloseBattles`、`verbose`）保留在 INI 里调整 ——
+    因为 AC 旧版窗口 UI 无法稳定定位大量控件（实测超过约 13 个后，多余控件会叠到窗口顶部），
+    故面板刻意精简。点 **SAVE CONFIGURATION** 调 `WriteSettings()` 写回 `AutoCam.ini`（保留用户自定义机位表）。
 
 14. **快捷键**
     - `Ctrl+F6`：切换 `cameraSwitchingEnabled`。
@@ -252,7 +255,7 @@ cam^usage^delay|cam^usage^delay|...
 | `cameraSwitchingEnabled` | `1` | 是否允许机位切换（`Ctrl+F6` 切换）。 |
 | `driverSwitchingEnabled` | `1` | 是否允许车手/聚焦切换（`Ctrl+F7` 切换）。 |
 | `hideicon` | `1` | 隐藏 AC 任务栏图标（映射为 `HideIcon`）。 |
-| `appwidth` / `appheight` | `280` / `716` | App 窗口尺寸（`AppWidth`/`AppHeight`）。保存后生效；`acMain` 会把这些值钳制到不小于 `280×716`（修复 B 已保证不被硬编码覆盖，另加最小下限防止内容被裁切）。 |
+| `appwidth` / `appheight` | `280` / `530` | App 窗口尺寸（`AppWidth`/`AppHeight`）。保存后生效；`acMain` 会把这些值钳制到不小于 `280×530`（修复 B 已保证不被硬编码覆盖，另加最小下限防止内容被裁切）。 |
 | `backgroundopacity` | `0.5` | 窗口背景不透明度 0~1（`backgroundOpacity`）。 |
 | `drawborder` | `0` | 是否绘制窗口边框（`drawBorder`）。 |
 | `verbose` | `0` | 日志级别：`0` 静默、`1` 详细、`4` 最详细（含 strErr 调试）。UI 勾选框在 `1`/`4` 间切换。 |
@@ -360,7 +363,7 @@ offPaceSwitchDelay = 240.0
 ; 界面外观
 hideicon = 1
 appwidth = 280
-appheight = 716
+appheight = 530
 backgroundopacity = 0.5
 drawborder = 0
 
