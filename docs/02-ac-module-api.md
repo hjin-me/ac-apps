@@ -79,10 +79,13 @@
 | 函数 | 说明 |
 | :--- | :--- |
 | `ac.addCheckBox(WINDOW, TEXT)` ⭐ | 添加勾选框 |
-| `ac.isChecked(CTRL)` ⭐ | 读取勾选状态（0/1） |
-| `ac.setChecked(CTRL, 0/1)` ⭐ | 设置勾选状态 |
-| `ac.addOnClickedListener(CTRL, fn)` ⭐ | 点击回调（本项目用 `isChecked` 读取） |
+| `ac.addOnClickedListener(CTRL, fn)` ⭐ | 点击回调 |
 | `ac.addOnCheckBoxChanged(CTRL, fn)` | 勾选变化回调（回调收到 name 与 1/-1） |
+
+> ⚠️ 实测（AC 1.14.3）**没有** `ac.isChecked` 与 `ac.setChecked` —— 调用会抛 `AttributeError`
+> （`module object has no attribute isChecked`）。这两项是社区文档检索产物，实机不存在。
+> 本项目因此把布尔项渲染为**自带状态的自管理按钮**（`addButton` + `setText` 反映 ON/OFF），
+> 状态以 Python 全局为准，点击时翻转并刷新按钮文字，避免依赖不存在的勾选读写接口。
 
 ### Graph（图表）
 | 函数 | 说明 |

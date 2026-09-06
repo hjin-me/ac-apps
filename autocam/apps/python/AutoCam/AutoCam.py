@@ -380,19 +380,15 @@ def onSwitchDelayChange(value):
 
 def onIncidentToggle(*args):
     global incidentDetection, chkIncident
-    try:
-        incidentDetection = int(ac.isChecked(chkIncident))
-        ConsoleLog("UI Changed incidentDetection to %d" % incidentDetection)
-    except Exception as e:
-        ConsoleLog("Error in onIncidentToggle: %s" % e)
+    incidentDetection = 1 - incidentDetection
+    ac.setText(chkIncident, checkboxLabel("Enable Incident Detection", incidentDetection == 1))
+    ConsoleLog("UI Changed incidentDetection to %d" % incidentDetection)
 
 def onForceTVToggle(*args):
     global forceTrackCamOnCloseBattles, chkForceTV
-    try:
-        forceTrackCamOnCloseBattles = int(ac.isChecked(chkForceTV))
-        ConsoleLog("UI Changed forceTrackCamOnCloseBattles to %d" % forceTrackCamOnCloseBattles)
-    except Exception as e:
-        ConsoleLog("Error in onForceTVToggle: %s" % e)
+    forceTrackCamOnCloseBattles = 1 - forceTrackCamOnCloseBattles
+    ac.setText(chkForceTV, checkboxLabel("Force TV Cam (Non-Dynamic)", forceTrackCamOnCloseBattles == 1))
+    ConsoleLog("UI Changed forceTrackCamOnCloseBattles to %d" % forceTrackCamOnCloseBattles)
 
 def onIncidentDurationChange(value):
     global incidentDuration
@@ -404,11 +400,9 @@ def onSaveSettingsClick(*args):
 
 def onDynamicChaseToggle(*args):
     global dynamicChaseCam, chkDynamicChase
-    try:
-        dynamicChaseCam = int(ac.isChecked(chkDynamicChase))
-        ConsoleLog("UI Changed dynamicChaseCam to %d" % dynamicChaseCam)
-    except Exception as e:
-        ConsoleLog("Error in onDynamicChaseToggle: %s" % e)
+    dynamicChaseCam = 1 - dynamicChaseCam
+    ac.setText(chkDynamicChase, checkboxLabel("Enable Dynamic Chase Cam", dynamicChaseCam == 1))
+    ConsoleLog("UI Changed dynamicChaseCam to %d" % dynamicChaseCam)
 
 def onTVCamThresholdChange(value):
     global tvCamThreshold
@@ -422,28 +416,20 @@ def onChaseOnboardThresholdChange(value):
 
 def onPreferLeaderToggle(*args):
     global leadersOverClosest, chkPreferLeader
-    try:
-        leadersOverClosest = int(ac.isChecked(chkPreferLeader))
-        ConsoleLog("UI Changed leadersOverClosest to %d" % leadersOverClosest)
-    except Exception as e:
-        ConsoleLog("Error in onPreferLeaderToggle: %s" % e)
+    leadersOverClosest = 1 - leadersOverClosest
+    ac.setText(chkPreferLeader, checkboxLabel("Prefer Leader Battles", leadersOverClosest == 1))
+    ConsoleLog("UI Changed leadersOverClosest to %d" % leadersOverClosest)
 
 def onVerboseToggle(*args):
     global verbose, chkVerbose
-    try:
-        verbose = 4 if ac.isChecked(chkVerbose) else 1
-        ConsoleLog("UI Changed verbose to %d" % verbose)
-    except Exception as e:
-        ConsoleLog("Error in onVerboseToggle: %s" % e)
+    verbose = 1 if verbose == 4 else 4
+    ac.setText(chkVerbose, checkboxLabel("Enable Verbose Logging", verbose == 4))
+    ConsoleLog("UI Changed verbose to %d" % verbose)
 
-def setCheckbox(ctrl, value):
-    # stock AC's ac module exposes addCheckBox/isChecked but not a programmatic
-    # checkbox setter in every build; wait for it, and skip silently if absent
-    # so acMain() still finishes building the UI.
-    try:
-        ac.setChecked(ctrl, value)
-    except AttributeError:
-        pass
+def checkboxLabel(text, on):
+    # stock AC here exposes addCheckBox but neither isChecked nor setChecked, so
+    # booleans are drawn as toggle buttons whose label carries the current state.
+    return "%s: %s" % (text, "ON" if on else "OFF")
 
 
 def acMain(ac_version):
@@ -475,12 +461,12 @@ def acMain(ac_version):
         #IP Specific INI
         ReadSettings(serverINI)
 
-        #the UI layout spans down to y=515 and out to x=265, so a smaller
-        #saved/INI size would clip the controls; never go below 280x530
+        #the UI layout spans down to y=694 and out to x=265, so a smaller
+        #saved/INI size would clip the controls; never go below 280x716
         if windowx < 280:
             windowx = 280
-        if windowy < 530:
-            windowy = 530
+        if windowy < 716:
+            windowy = 716
 
         #Read Pit Entry Path - we are not doing this for now
         #loadPitEntryToDict()
@@ -519,26 +505,27 @@ def acMain(ac_version):
         ac.drawBorder(camWindow,0)
         ac.setBackgroundOpacity(camWindow,0.7)
 
+        # the AC window title bar occupies the very top, so keep everything below it
         btnToggle = ac.addButton(camWindow, "AutoCam ACTIVE")
         if AutoCamActive == 0:
             ac.setText(btnToggle, "AutoCam INACTIVE")
-        ac.setPosition(btnToggle, 15, 25)
-        ac.setSize(btnToggle, windowx - 30, 25)
+        ac.setPosition(btnToggle, 15, 52)
+        ac.setSize(btnToggle, windowx - 30, 26)
         ac.setFontSize(btnToggle, 14)
         ac.addOnClickedListener(btnToggle, onToggle)
 
         # --- Section 1: Battle Settings ---
         lblSectionBattle = ac.addLabel(camWindow, "--- Battle Settings ---")
-        ac.setPosition(lblSectionBattle, 15, 60)
+        ac.setPosition(lblSectionBattle, 15, 102)
         ac.setFontSize(lblSectionBattle, 13)
 
         # Spinner for battleGap
         lblBattleGap = ac.addLabel(camWindow, "Battle Gap (sec):")
-        ac.setPosition(lblBattleGap, 15, 85)
+        ac.setPosition(lblBattleGap, 15, 128)
         ac.setFontSize(lblBattleGap, 12)
-        
+
         spinBattleGap = ac.addSpinner(camWindow, "")
-        ac.setPosition(spinBattleGap, 160, 83)
+        ac.setPosition(spinBattleGap, 160, 126)
         ac.setSize(spinBattleGap, 105, 22)
         ac.setRange(spinBattleGap, 0.1, 2.5)
         ac.setStep(spinBattleGap, 0.1)
@@ -547,11 +534,11 @@ def acMain(ac_version):
 
         # Spinner for positionDecay
         lblPosDecay = ac.addLabel(camWindow, "Front Priority (Decay):")
-        ac.setPosition(lblPosDecay, 15, 115)
+        ac.setPosition(lblPosDecay, 15, 166)
         ac.setFontSize(lblPosDecay, 12)
-        
+
         spinPosDecay = ac.addSpinner(camWindow, "")
-        ac.setPosition(spinPosDecay, 160, 113)
+        ac.setPosition(spinPosDecay, 160, 164)
         ac.setSize(spinPosDecay, 105, 22)
         ac.setRange(spinPosDecay, 0.70, 1.0)
         ac.setStep(spinPosDecay, 0.01)
@@ -560,43 +547,41 @@ def acMain(ac_version):
 
         # Spinner for driverSwitchDelay
         lblSwitchDelay = ac.addLabel(camWindow, "Switch Delay (sec):")
-        ac.setPosition(lblSwitchDelay, 15, 145)
+        ac.setPosition(lblSwitchDelay, 15, 204)
         ac.setFontSize(lblSwitchDelay, 12)
-        
+
         spinSwitchDelay = ac.addSpinner(camWindow, "")
-        ac.setPosition(spinSwitchDelay, 160, 143)
+        ac.setPosition(spinSwitchDelay, 160, 202)
         ac.setSize(spinSwitchDelay, 105, 22)
         ac.setRange(spinSwitchDelay, 5.0, 60.0)
         ac.setStep(spinSwitchDelay, 1.0)
         ac.setValue(spinSwitchDelay, driverSwitchDelay)
         ac.addOnValueChangeListener(spinSwitchDelay, onSwitchDelayChange)
 
-        # Checkbox for Prefer Leader Battles
-        chkPreferLeader = ac.addCheckBox(camWindow, "Prefer Leader Battles")
-        ac.setPosition(chkPreferLeader, 15, 175)
-        ac.setSize(chkPreferLeader, 250, 22)
-        setCheckbox(chkPreferLeader, leadersOverClosest)
+        # Button for Prefer Leader Battles
+        chkPreferLeader = ac.addButton(camWindow, checkboxLabel("Prefer Leader Battles", leadersOverClosest == 1))
+        ac.setPosition(chkPreferLeader, 15, 240)
+        ac.setSize(chkPreferLeader, 250, 24)
         ac.addOnClickedListener(chkPreferLeader, onPreferLeaderToggle)
 
         # --- Section 2: Dynamic Chase Camera ---
         lblSectionChase = ac.addLabel(camWindow, "--- Dynamic Chase Cam ---")
-        ac.setPosition(lblSectionChase, 15, 205)
+        ac.setPosition(lblSectionChase, 15, 302)
         ac.setFontSize(lblSectionChase, 13)
 
-        # Checkbox for Enable Dynamic Chase Cam
-        chkDynamicChase = ac.addCheckBox(camWindow, "Enable Dynamic Chase Cam")
-        ac.setPosition(chkDynamicChase, 15, 230)
-        ac.setSize(chkDynamicChase, 250, 22)
-        setCheckbox(chkDynamicChase, dynamicChaseCam)
+        # Button for Enable Dynamic Chase Cam
+        chkDynamicChase = ac.addButton(camWindow, checkboxLabel("Enable Dynamic Chase Cam", dynamicChaseCam == 1))
+        ac.setPosition(chkDynamicChase, 15, 328)
+        ac.setSize(chkDynamicChase, 250, 24)
         ac.addOnClickedListener(chkDynamicChase, onDynamicChaseToggle)
 
         # Spinner for tvCamThreshold
         lblTVThreshold = ac.addLabel(camWindow, "TV Cam Threshold (sec):")
-        ac.setPosition(lblTVThreshold, 15, 260)
+        ac.setPosition(lblTVThreshold, 15, 368)
         ac.setFontSize(lblTVThreshold, 12)
-        
+
         spinTVThreshold = ac.addSpinner(camWindow, "")
-        ac.setPosition(spinTVThreshold, 160, 258)
+        ac.setPosition(spinTVThreshold, 160, 366)
         ac.setSize(spinTVThreshold, 105, 22)
         ac.setRange(spinTVThreshold, 0.1, 1.0)
         ac.setStep(spinTVThreshold, 0.05)
@@ -605,62 +590,57 @@ def acMain(ac_version):
 
         # Spinner for chaseOnboardThreshold
         lblChaseOnboard = ac.addLabel(camWindow, "Onboard Threshold (sec):")
-        ac.setPosition(lblChaseOnboard, 15, 290)
+        ac.setPosition(lblChaseOnboard, 15, 408)
         ac.setFontSize(lblChaseOnboard, 12)
-        
+
         spinChaseOnboard = ac.addSpinner(camWindow, "")
-        ac.setPosition(spinChaseOnboard, 160, 288)
+        ac.setPosition(spinChaseOnboard, 160, 406)
         ac.setSize(spinChaseOnboard, 105, 22)
         ac.setRange(spinChaseOnboard, 0.3, 2.0)
         ac.setStep(spinChaseOnboard, 0.1)
         ac.setValue(spinChaseOnboard, chaseOnboardThreshold)
         ac.addOnValueChangeListener(spinChaseOnboard, onChaseOnboardThresholdChange)
 
-        # Checkbox for Force TV Cam on Battle
-        chkForceTV = ac.addCheckBox(camWindow, "Force TV Cam (Non-Dynamic)")
-        ac.setPosition(chkForceTV, 15, 320)
-        ac.setSize(chkForceTV, 250, 22)
-        chkForceTVVal = 1 if forceTrackCamOnCloseBattles == 1 else 0
-        setCheckbox(chkForceTV, chkForceTVVal)
+        # Button for Force TV Cam on Battle
+        chkForceTV = ac.addButton(camWindow, checkboxLabel("Force TV Cam (Non-Dynamic)", forceTrackCamOnCloseBattles == 1))
+        ac.setPosition(chkForceTV, 15, 444)
+        ac.setSize(chkForceTV, 250, 24)
         ac.addOnClickedListener(chkForceTV, onForceTVToggle)
 
         # --- Section 3: Incident Settings ---
         lblSectionIncident = ac.addLabel(camWindow, "--- Incident Settings ---")
-        ac.setPosition(lblSectionIncident, 15, 350)
+        ac.setPosition(lblSectionIncident, 15, 506)
         ac.setFontSize(lblSectionIncident, 13)
 
-        # Checkbox for Incident Detection
-        chkIncident = ac.addCheckBox(camWindow, "Enable Incident Detection")
-        ac.setPosition(chkIncident, 15, 375)
-        ac.setSize(chkIncident, 250, 22)
-        setCheckbox(chkIncident, incidentDetection)
+        # Button for Incident Detection
+        chkIncident = ac.addButton(camWindow, checkboxLabel("Enable Incident Detection", incidentDetection == 1))
+        ac.setPosition(chkIncident, 15, 532)
+        ac.setSize(chkIncident, 250, 24)
         ac.addOnClickedListener(chkIncident, onIncidentToggle)
 
         # Spinner for incidentDuration
         lblIncidentDuration = ac.addLabel(camWindow, "Incident Duration (sec):")
-        ac.setPosition(lblIncidentDuration, 15, 410)
+        ac.setPosition(lblIncidentDuration, 15, 572)
         ac.setFontSize(lblIncidentDuration, 12)
-        
+
         spinIncidentDuration = ac.addSpinner(camWindow, "")
-        ac.setPosition(spinIncidentDuration, 160, 408)
+        ac.setPosition(spinIncidentDuration, 160, 570)
         ac.setSize(spinIncidentDuration, 105, 22)
         ac.setRange(spinIncidentDuration, 2.0, 20.0)
         ac.setStep(spinIncidentDuration, 1.0)
         ac.setValue(spinIncidentDuration, incidentDuration)
         ac.addOnValueChangeListener(spinIncidentDuration, onIncidentDurationChange)
 
-        # Checkbox for Verbose Logs
-        chkVerbose = ac.addCheckBox(camWindow, "Enable Verbose Logging")
-        ac.setPosition(chkVerbose, 15, 440)
-        ac.setSize(chkVerbose, 250, 22)
-        chkVerboseVal = 1 if verbose == 4 else 0
-        setCheckbox(chkVerbose, chkVerboseVal)
+        # Button for Verbose Logs
+        chkVerbose = ac.addButton(camWindow, checkboxLabel("Enable Verbose Logging", verbose == 4))
+        ac.setPosition(chkVerbose, 15, 608)
+        ac.setSize(chkVerbose, 250, 24)
         ac.addOnClickedListener(chkVerbose, onVerboseToggle)
 
         # Save Settings Button
         btnSave = ac.addButton(camWindow, "SAVE CONFIGURATION")
-        ac.setPosition(btnSave, 15, 485)
-        ac.setSize(btnSave, windowx - 30, 30)
+        ac.setPosition(btnSave, 15, 662)
+        ac.setSize(btnSave, windowx - 30, 32)
         ac.setFontSize(btnSave, 14)
         ac.addOnClickedListener(btnSave, onSaveSettingsClick)
 
