@@ -20,6 +20,7 @@
 | [07-aclib-framework.md](07-aclib-framework.md) | ACLIB 高层框架（`ACApp`/`ACData`/`ACMeta`） |
 | [08-development-tooling.md](08-development-tooling.md) | 调试、热重载、类型桩、Content Manager、OBS 集成 |
 | [09-testing.md](09-testing.md) | 测试规范：离线纯逻辑（stub `ac`/`acsys`）与游戏内 API 行为的分层测试 |
+| [10-ac-ui-components.md](10-ac-ui-components.md) | 原生 UI 组件与布局引擎：坐标系、控件、实机踩坑（堆叠/标题栏/checkbox） |
 
 ## 相关概念速览
 
