@@ -27,7 +27,7 @@ os.environ['PATH'] = os.environ['PATH'] + ";."
 import AutoCam_sim_info
 
 #from obsremote import OBSRemote
-#import json
+import json
 #import logging
 #import threading
 #import websocket
@@ -384,6 +384,35 @@ def setLabelColor(ctrl, r, g, b, a=1.0):
         pass
 
 
+def getCarDisplayName(car):
+    # ac.getCarName() returns the model folder id (e.g. ks_ferrari_488_gt3), not a
+    # human-readable name. The friendly name lives in the car's ui/ui_car.json.
+    # Parse it if present and readable; fall back to the folder id on any failure.
+    try:
+        model = ac.getCarName(car)
+        if model == -1 or not model:
+            return ""
+        name = None
+        for rel in ("ui/ui_car.json", "ui_car.json"):
+            path = os.path.join("content", "cars", model, rel)
+            try:
+                with open(path, 'r') as f:
+                    data = json.load(f)
+                name = data.get("name")
+                if name:
+                    return name
+            except Exception as e:
+                ConsoleLog("getCarDisplayName %s" % e)
+                name = None
+    except Exception as e:
+        ConsoleLog("getCarDisplayName %s" % e)
+    try:
+        fallback = ac.getCarName(car)
+        return fallback if fallback and fallback != -1 else ""
+    except:
+        return ""
+
+
 def buildHudWindow():
     global hudWindow, hudName, hudCar, hudPos, hudLast, hudBest, hudGapAhead, hudGapBehind
     hudWindow = ac.newApp("AutoCam HUD")
@@ -440,7 +469,7 @@ def updateHud():
             return
 
         ac.setText(hudName, ac.getDriverName(car))
-        ac.setText(hudCar, ac.getCarName(car))
+        ac.setText(hudCar, getCarDisplayName(car))
         ac.setText(hudPos, "P%d/%d" % (getPosition(car) + 1, ac.getCarsCount()))
 
         last = ac.getCarState(car, acsys.CS.LastLap)
