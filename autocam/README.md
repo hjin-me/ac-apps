@@ -419,6 +419,10 @@ python3 -m unittest tests.test_autocam -v  # 单模块
 - **`anyDriverFinishing` 门控**：事故/超车判断处该值在该点恒为 `0`，可能使事故/超车在冲线圈触发，属可接受范围。
 - **OBS 链路被剔除**：`autocam/` 不含 `obsremote`/`websocket`，仅保留 `process_exists("obs64.exe")` 探测与
   `promoText` 聊天公告。
+- **只在实时会话跑（`graphics.status == AC_LIVE`）**：导演循环 `autoCam()` 开头按共享内存状态做闸门，
+  非实时（replay / 暂停 / 主菜单）直接返回。AC/CSP 会把 `focusCar`/`setCameraMode`/`getCarRealTimeLeaderboardPosition`
+  等在非实时状态下禁用，抛 `Not available in replay only mode`；此闸门避免在回放时调用这些接口。
+  `getCarRealTimeLeaderboardPosition` 也经 `getLivePosition()` 用 try/except 兜底。
 - `PIT_ENTRY/*`：进站位置表已加载但当前逻辑停用（`loadPitEntryToDict` 在 `acMain` 里被注释）。
 
 ---

@@ -1126,11 +1126,22 @@ def acShutdown(*args):
     #ac.removeItem(camWindow)
 
     
+def getLivePosition(car):
+    # ac.getCarRealTimeLeaderboardPosition is a live-only CSP call: it raises
+    # "Not available in replay only mode" when AC is not in a live session. The
+    # director short-circuits on non-live, but the call can still fail transiently,
+    # so guard it and fall back to a position that keeps the car at the back of
+    # the ordering rather than crashing the frame.
+    try:
+        return ac.getCarRealTimeLeaderboardPosition(car)
+    except:
+        return 9999
+
 def getPosition(car):
     tmpKey = "APPS:BROADCAST APP"
     if order == "": #not tmpKey in dicPython:
         #ConsoleLog("returning 100 getCarRealTimeLeaderboardPosition for dic[%s]"%(tmpKey))
-        return ac.getCarRealTimeLeaderboardPosition(car)
+        return getLivePosition(car)
     else:
         tmpKey = "Car%dPosition"%(car) #getPosition
         if tmpKey in dic:
@@ -1138,7 +1149,7 @@ def getPosition(car):
             return int(dic[tmpKey])
         else:
             #ConsoleLog("returning 200 getCarRealTimeLeaderboardPosition for dic[%s]"%(tmpKey))
-            return ac.getCarRealTimeLeaderboardPosition(car)
+            return getLivePosition(car)
     
 def setPositions():
     #ConsoleLog("setPositions subroutine")
@@ -1269,6 +1280,16 @@ def autoCam():
     anyDriverFinishing = 0
     focusCarBattling = False
 
+    sim_info_obj = AutoCam_sim_info.AutoCam_SimInfo()
+
+    # AutoCam is a live-broadcast director. AC/CSP gate the APIs it relies on
+    # (focusCar / setCameraMode / getCarRealTimeLeaderboardPosition) so they
+    # only work during a live session; outside one they raise "Not available in
+    # replay only mode". Short-circuit the whole director so it never makes
+    # those gated calls while AC is showing a replay, is paused, or is in the menu.
+    if sim_info_obj.graphics.status != AutoCam_sim_info.AC_LIVE:
+        return
+
     # rebuild the car wrappers if the connected-car count changed (e.g. cars
     # join/leave, or the app loaded before the grid was populated)
     if len(cars) != ac.getCarsCount():
@@ -1295,8 +1316,7 @@ def autoCam():
         suffix = suffix + "d"
     
     ac.setTitle(camWindow, "AutoCam " + suffix)
-    
-    sim_info_obj = AutoCam_sim_info.AutoCam_SimInfo()
+
     bIsQually = False
     if sim_info_obj.graphics.session == 1:
         bIsQually = True
@@ -1305,16 +1325,9 @@ def autoCam():
         bIsPractice = True
     bIsRace = False
     if sim_info_obj.graphics.session == 2:
-        bIsRace = True    
-    
-    if (sim_info_obj.graphics.status == 1):
-        #ConsoleLog("Session = %d, replayTimeMultiplier = %0.2f"%(sim_info_obj.graphics.session, sim_info_obj.graphics.replayTimeMultiplier))
-        #assume all replays are races?
-        bIsPractice = False
-        bIsQually = False
         bIsRace = True
-    
-    totalLaps = sim_info_obj.graphics.numberOfLaps    
+
+    totalLaps = sim_info_obj.graphics.numberOfLaps
     
     strErr = "110"
     if verbose == 4:
@@ -1506,7 +1519,7 @@ def autoCam():
                     cars_list = []
                     for car in range(0, ac.getCarsCount()):
                         if ac.isConnected(car):
-                            pos = ac.getCarRealTimeLeaderboardPosition(car)
+                            pos = getLivePosition(car)
                             cars_list.append((pos, car))
                     cars_list.sort()
                     orderStrings = [str(car) for pos, car in cars_list]
@@ -1933,7 +1946,7 @@ def autoCam():
                     cars_list = []
                     for car in range(0, ac.getCarsCount()):
                         if ac.isConnected(car):
-                            pos = ac.getCarRealTimeLeaderboardPosition(car)
+                            pos = getLivePosition(car)
                             cars_list.append((pos, car))
                     cars_list.sort()
                     orderStrings = [str(car) for pos, car in cars_list]
