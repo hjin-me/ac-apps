@@ -1,0 +1,40 @@
+name: AutoCam Release
+
+# When the AutoCam app directory changes on main, package its installable
+# contents (apps/ + content/) into a zip and publish a GitHub Release with that
+# zip attached. Each change produces its own release, tagged by run number so
+# repeated builds never collide.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'autocam/**'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package AutoCam
+        run: |
+          cd autocam
+          # The installable portions are apps/ (the plugin) and content/ (the icon).
+          # tests/ is dev-only and dropped; backup/ + __pycache__ are excluded
+          # defensively (also gitignored). stdlib/ + stdlib64/ are kept (needed at runtime).
+          zip -r AutoCam.zip apps content \
+            -x 'apps/python/AutoCam/tests/*' \
+            -x 'apps/python/AutoCam/backup/*' \
+            -x '*__pycache__*'
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: autocam-${{ github.run_number }}
+          name: AutoCam v${{ github.run_number }}
+          generate_release_notes: true
+          files: autocam/AutoCam.zip
