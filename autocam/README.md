@@ -251,7 +251,7 @@ cam^usage^delay|cam^usage^delay|...
 | `cameraSwitchingEnabled` | `1` | 是否允许机位切换（`Ctrl+F6` 切换）。 |
 | `driverSwitchingEnabled` | `1` | 是否允许车手/聚焦切换（`Ctrl+F7` 切换）。 |
 | `hideicon` | `1` | 隐藏 AC 任务栏图标（映射为 `HideIcon`）。 |
-| `appwidth` / `appheight` | `104` / `55` | App 窗口尺寸（`AppWidth`/`AppHeight`）。保存后生效（修复 B 已保证不被硬编码覆盖）。 |
+| `appwidth` / `appheight` | `280` / `530` | App 窗口尺寸（`AppWidth`/`AppHeight`）。保存后生效；`acMain` 会把这些值钳制到不小于 `280×530`（修复 B 已保证不被硬编码覆盖，另加最小下限防止内容被裁切）。 |
 | `backgroundopacity` | `0.5` | 窗口背景不透明度 0~1（`backgroundOpacity`）。 |
 | `drawborder` | `0` | 是否绘制窗口边框（`drawBorder`）。 |
 | `verbose` | `0` | 日志级别：`0` 静默、`1` 详细、`4` 最详细（含 strErr 调试）。UI 勾选框在 `1`/`4` 间切换。 |
@@ -358,8 +358,8 @@ offPaceSwitchDelay = 240.0
 
 ; 界面外观
 hideicon = 1
-appwidth = 104
-appheight = 55
+appwidth = 280
+appheight = 530
 backgroundopacity = 0.5
 drawborder = 0
 

@@ -473,7 +473,15 @@ def acMain(ac_version):
         #default INI
         ReadSettings(SettingsINI)
         #IP Specific INI
-        ReadSettings(serverINI)    
+        ReadSettings(serverINI)
+
+        #the UI layout spans down to y=515 and out to x=265, so a smaller
+        #saved/INI size would clip the controls; never go below 280x530
+        if windowx < 280:
+            windowx = 280
+        if windowy < 530:
+            windowy = 530
+
         #Read Pit Entry Path - we are not doing this for now
         #loadPitEntryToDict()
         
